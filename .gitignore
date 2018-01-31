@@ -99,3 +99,12 @@ ENV/
 
 # mypy
 .mypy_cache/
+Fashion MNIST/data/
+MNIST/MNIST 2/data/
+MNIST/MNIST 3/data/mnist_train.csv
+MNIST/MNIST 3/data/mnist_test.csv
+MNIST/MNIST 1/mnist_Logistic_wts.h5
+MNIST/MNIST 1/mnist_Logistic_model.yaml
+Fashion MNIST/mnist_Logistic_model.json
+MNIST/MNIST 1/mnist_Logistic_model.json
+Fashion MNIST/mnist_Logistic_wts.h5
