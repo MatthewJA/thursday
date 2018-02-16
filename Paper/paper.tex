@@ -6,6 +6,12 @@
 \usepackage{bm}% bold math
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+
+\newcommand{\todo}[1]{ {\color{red}[{\bf TODO:~{#1}}]} }
+\let\arrvec=\vec
+\renewcommand{\vec}[1]{\mathbf{#1}}
 
 \begin{document}
 
@@ -25,12 +31,12 @@ pensive and, in many cases, highly impractical, effective
 data mining techniques have often been detrimental to
 many of the recent discoveries in this field.
 
-. Give examples
+\todo{Give examples}
 
 In this report, we consider the classification task of radio galaxies with active nuclei within the Fanaroff-Riley
 scheme. Under this scheme, galaxies that decrease in luminosity as the distance from the galactic nuclei increases are designated as FR-I, and sources that increase in luminosity towards the outer parts of the nuclei as FR-II.
 
-. why is this problem important?
+\todo{why is this problem important?}
 
 The morphological differences between the two classes
 in radio images have allowed experts to classify candidates visually with a reasonable degree of accuracy. How-
@@ -43,7 +49,7 @@ examples available to researchers, the sample size is still
 small enough to make it difficult apply the state of the
 art image classification methods such as deep learning.
 
-. List attempts and results
+\todo{List attempts and results}
 
 More recently, Aniyan and Thorat showed moderate
 success with convolutional neural networks, achieving a
@@ -58,14 +64,16 @@ is based upon performance on optical images - radio imagery (different in what w
 
 
 \begin{figure}
- 
+    \centering
     \begin{subfigure}[b]{0.5\textwidth}
-        \includegraphics[width=0.5\linewidth]{FR1.jpg} 
+        \centering
+        \includegraphics[width=0.5\linewidth]{../HOG/FR1.jpg} 
         \caption{FR-I}
         \label{fig:subim1}
-    \end{subfigure}
+    \end{subfigure}%
     \begin{subfigure}[b]{0.5\textwidth}
-        \includegraphics[width=0.5\linewidth]{FR2.jpg}
+        \centering
+        \includegraphics[width=0.5\linewidth]{../HOG/FR2.jpg}
         \caption{FR-II}
         \label{fig:subim2}
     \end{subfigure}
@@ -84,26 +92,26 @@ Supervised learning methods, which we employ primarily in this study, aim to ide
 
 \subsubsection{\label{sec:level3}Logistic Regression}
 
-$$
-y \big( \overrightarrow{x} \big) = p \big(z=1 \mid  \overrightarrow{x} \big) =  \sigma  \big( \overrightarrow{w}^{T}+b \big) 
-$$
+\begin{equation}
+    y \big( \vec{x} \big) = p \big(z=1 \mid  \vec{x} \big) =  \sigma  \big( \vec{w}^{T}+b \big) 
+\end{equation}
 
-$$
- \sigma  \big(t\big) = \frac{1}{1+e^{-t}}
-$$ 
+\begin{equation}
+    \sigma  \big(t\big) = \frac{1}{1+e^{-t}}
+\end{equation} 
 
-$$
-\overrightarrow{w}_{t+1} = \overrightarrow{w}_{t} -  \nabla L \big(\overrightarrow{w}_{t}\big) 
-$$
- 
-$$
-\nabla L \big(\overrightarrow{w}_{t}\big) =  -\frac{1}{N}  \sum_{ \overrightarrow{x}, z \in D } \big(z-y \big( \overrightarrow{x} \big) \big)\overrightarrow{x}
+\begin{equation}
+    \vec{w}_{t+1} = \vec{w}_{t} -  \nabla L \big(\vec{w}_{t}\big) 
+\end{equation}
 
-$$
+
+\begin{equation}
+\nabla L \big(\vec{w}_{t}\big) =  -\frac{1}{N}  \sum_{ \vec{x}, z \in D } \big(z-y \big( \vec{x} \big) \big)\ \vec{x}
+\end{equation}
 
 \subsubsection{\label{sec:level3}Neural Networks}
 
-. Update Heavily 
+\todo{Update Heavily }
 
 The ability of the human mind to recognize patterns in complex systems is extremely hard to match algorithmically. Artificial Neural Networks (ANN) are a computational approach of matching the functions of the human brain by mimicking synaptic connections between neurons by series of interconnected nodes organized in layers. ANNs have been successfully applied to a wide range of tasks, including character recognition, face detection, intrusion detection, speech recognition, autonomous driving, stock market prediction, and astronomy. 
 
