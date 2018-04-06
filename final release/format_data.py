@@ -1,9 +1,3 @@
-
-# coding: utf-8
-
-# In[45]:
-
-
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
@@ -18,8 +12,6 @@ import astropy.units as u
 
 import sys, os
 
-
-# In[46]:
 
 def get_data(first_path, second_path, dim = 256, seed = 0, conf_matrix = True, flip_train_test = False):
     # Loading data
@@ -82,7 +74,7 @@ def get_data(first_path, second_path, dim = 256, seed = 0, conf_matrix = True, f
     asu_frii_lab = np.ones(asu_frii.shape[0], dtype=bool)
 
     leftover_fri_lab = np.zeros(leftover_fri.shape[0], dtype=bool)
-    leftover_frii_lab = np.zeros(leftover_frii.shape[0], dtype=bool)
+    leftover_frii_lab = np.ones(leftover_frii.shape[0], dtype=bool)
 
     # Combining FRI's and FRII's and shuffling
     asu_fr = np.vstack((asu_fri, asu_frii))
