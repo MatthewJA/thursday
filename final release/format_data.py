@@ -25,7 +25,8 @@ def rescale_imgs(images, dim):
         imgs[i, :, :] = resize(images[i, :, :], (dim, dim))
 
     return np.expand_dims(imgs, axis=3)
-        
+
+
 def get_data(first_path, second_path, dim=256, seed=0, conf_matrix=True, flip_train_test=False):
     """Formats data into training and testing sets.
     
@@ -144,7 +145,7 @@ def get_data(first_path, second_path, dim=256, seed=0, conf_matrix=True, flip_tr
         test_x = asu_fr_
         test_y = asu_fr_labels_
 
-    #Rescaling Images
+    # Rescaling Images
     train_x = rescale_imgs(train_x, dim)
     test_x = rescale_imgs(test_x, dim)
 
@@ -163,8 +164,8 @@ def add_noise(image):
          occurred when sections of an image had pixel intensity values 
          of zero due to formatting errors, resulting in intensity 
          gradients of zero that broke the arctan2 function in our custom
-         keras layer"""
-        
+         keras layer
+         """
         image += 10e-10 * np.random.randn(image.shape[0], image.shape[1], 1)
         return image
 
@@ -222,18 +223,18 @@ def data_pregenerate(images, labels, datagen, batch_size, nb_epoch, seed):
 
         for X_batch, Y_batch in gen:
             if batch < (samples / b):
-                cut_start = b_start + b*(batch-1)
-                cut_stop = b_start + batch*b
+                cut_start = b_start + b * (batch-1)
+                cut_stop = b_start + batch * b
                 
                 pro_images[cut_start:cut_stop, :, :, :] = X_batch
                 pro_labels[cut_start:cut_stop] = Y_batch
                 
-            elif batch == int(samples / b):
+            elif batch == samples // b:
                 break
 
             else:
-                cut_start = b_start + b*(batch-1)
-                cut_stop = b_start + b*(batch-1) + X_batch.shape[0] % b
+                cut_start = b_start + b * (batch-1)
+                cut_stop = b_start + b * (batch-1) + X_batch.shape[0] % b
                 
                 pro_images[cut_start:cut_stop, :, :, :] = X_batch
                 pro_labels[cut_start:cut_stop] = Y_batch
