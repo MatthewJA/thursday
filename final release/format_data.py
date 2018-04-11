@@ -1,6 +1,7 @@
 """Functions for formatting, preprocessing, and augmentation."""
 
-import sys, os
+import sys
+import os
 import pickle
 
 from astropy.coordinates import SkyCoord
@@ -9,16 +10,14 @@ import astropy.units as u
 import h5py
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils import np_utils
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from skimage.transform import resize
 from sklearn.utils import shuffle
 
 
-# Defining rescaling function
-def rescale_imgs(images,dim=dim):
+def rescale_imgs(images, dim):
     """Rescales array of images to specified dimensions."""
-    
     size = images.shape[0]
     imgs = np.zeros((size, dim, dim))
 
@@ -28,7 +27,6 @@ def rescale_imgs(images,dim=dim):
     return np.expand_dims(imgs, axis=3)
         
 def get_data(first_path, second_path, dim=256, seed=0, conf_matrix=True, flip_train_test=False):
-    
     """Formats data into training and testing sets.
     
     Takes a base dataset and a second dataset in specific formats. 
@@ -66,12 +64,23 @@ def get_data(first_path, second_path, dim=256, seed=0, conf_matrix=True, flip_tr
         of train_x and test_x are (nb_samples, dim, dim, 1).
 
     """
-    
-    
     # Loading data
     with h5py.File(first_path, 'r') as data:
-        images = np.asarray(data['images'])
-        labels = np.asarray(data['labels'])
+        images = data['images'].value
+        labels = data['labels'].value.astype(bool)
+        
+        fri_data = data['fri_data']
+        frii_data = data['frii_data']
+        
+        # Converting coordinates into a Astropy Skycoord readable format
+        fri_ra = fri_data['ra'].value.astype(str).reshape((-1, 1))
+        fri_de = fri_data['dec'].value.astype(str).reshape((-1, 1))
+
+        frii_ra = frii_data['_RA'].value.astype(str).reshape((-1, 1))
+        frii_de = frii_data['_DE'].value.astype(str).reshape((-1, 1))
+        
+        fri_c = np.hstack((fri_ra, fri_de))
+        frii_c = np.hstack((frii_ra, frii_de))
 
     # Opening Catalogues
     asu = asc.read(second_path).to_pandas()
@@ -79,20 +88,6 @@ def get_data(first_path, second_path, dim=256, seed=0, conf_matrix=True, flip_tr
     # Splitting classes
     fri_images = images[~labels]
     frii_images = images[labels]
-
-    # Extracting data 
-    fri_data = data['fri_data']
-    frii_data = data['frii_data']
-
-    # Converting coordinates into a Astropy Skycoord readable format
-    fri_ra = np.asarray(list(fri_data['ra'])).astype(str).reshape((-1, 1))
-    fri_de = np.asarray(list(fri_data['dec'])).astype(str).reshape((-1, 1))
-    
-    frii_ra = np.asarray(list(frii_data['_RA'])).reshape((-1, 1))
-    frii_de = np.asarray(list(frii_data['_DE'])).reshape((-1, 1))
-    
-    fri_c = np.hstack((fri_ra, fri_de))
-    frii_c = np.hstack((frii_ra, frii_de))
      
     # Coverting coordinates of wildly varying formats to SkyCoords
     asu_ra = asu.iloc[2:]['RAJ2000']
@@ -114,8 +109,8 @@ def get_data(first_path, second_path, dim=256, seed=0, conf_matrix=True, flip_tr
     asu_fri = fri_images[fri_in_asu]
     asu_frii = frii_images[frii_in_asu]
 
-    leftover_fri = fri_images[~(fri_in_asu)]
-    leftover_frii = frii_images[~(frii_in_asu)]
+    leftover_fri = fri_images[~fri_in_asu]
+    leftover_frii = frii_images[~frii_in_asu]
  
     # Generating Labels
     asu_fri_labels = np.zeros(asu_fri.shape[0], dtype=bool)
@@ -126,37 +121,32 @@ def get_data(first_path, second_path, dim=256, seed=0, conf_matrix=True, flip_tr
 
     # Combining FRI's and FRII's and shuffling
     asu_fr = np.vstack((asu_fri, asu_frii))
-    asu_fr_lab = np.concatenate((asu_fri_labels, asu_frii_labels), axis=0) 
+    asu_fr_labels = np.concatenate((asu_fri_labels, asu_frii_labels), axis=0) 
 
     leftover_fr = np.vstack((leftover_fri, leftover_frii))
-    leftover_fr_lab = np.concatenate((leftover_fri_labels, leftover_frii_labels), axis=0)             
+    leftover_fr_labels = np.concatenate((leftover_fri_labels, leftover_frii_labels), axis=0)             
     # Shuffling
-    asu_fr, asu_fr_labels = shuffle(asu_fr, asu_fr_labels, random_state=seed)
-    
-    leftover_fr, leftover_fr_labels = shuffle(leftover_fr, leftover_fr_labels, random_state=seed) 
+    asu_fr_, asu_fr_labels_ = shuffle(asu_fr, asu_fr_labels, random_state=seed)
+    leftover_fr_, leftover_fr_labels_ = shuffle(leftover_fr, leftover_fr_labels, random_state=seed) 
 
     # Setting training and testing sets
     if not flip_train_test:
-        train_x = asu_fr
-        train_y = asu_fr_labels
+        train_x = asu_fr_
+        train_y = asu_fr_labels_
 
-        test_x = leftover_fr
-        test_y = leftover_fr_labels
+        test_x = leftover_fr_
+        test_y = leftover_fr_labels_
 
     else:
-        train_x = leftover_fr
-        train_y = leftover_fr_labels
+        train_x = leftover_fr_
+        train_y = leftover_fr_labels_
 
-        test_x = asu_fr
-        test_y = asu_fr_labels
+        test_x = asu_fr_
+        test_y = asu_fr_labels_
 
     #Rescaling Images
-    sys.stdout = open(os.devnull, "w")  # don't show printed output
-    
     train_x = rescale_imgs(train_x, dim)
     test_x = rescale_imgs(test_x, dim)
-
-    sys.stdout = sys.__stdout__  # show printed output
 
     # Convert class vectors to binary class matrices (for Keras Dense)
     if conf_matrix:
@@ -165,15 +155,15 @@ def get_data(first_path, second_path, dim=256, seed=0, conf_matrix=True, flip_tr
     
     return train_x, train_y, test_x, test_y    
 
-# Adding 
 def add_noise(image):
         """ Adds tiny random Gaussian Noise to each image. 
         
-        Applies the function to each image to ensure there are no vanishing
-        and exploding gradients. Fixes an Error that occoured when sections
-        of an image had pixel intensity values of zero due to formating 
-        errors, resulting in intenstiy gradients of zero that broke the 
-        arctan2 function in our custom keras layer"""
+         Applies the function to each image to ensure there are no
+         vanishing and exploding gradients. Fixes an Error that 
+         occurred when sections of an image had pixel intensity values 
+         of zero due to formatting errors, resulting in intensity 
+         gradients of zero that broke the arctan2 function in our custom
+         keras layer"""
         
         image += 10e-10 * np.random.randn(image.shape[0], image.shape[1], 1)
         return image
@@ -197,8 +187,6 @@ def data_gen(rotation_range=180, zoom_range=0.2, shift_range=0.0, flip=True):
 
 
 def data_pregenerate(images, labels, datagen, batch_size, nb_epoch, seed):
-    samples = images.shape[0]
-    
     """Pre-generates data for Sklearn models.
     
     Using base set of images, a random combination is augmentations within
@@ -217,14 +205,15 @@ def data_pregenerate(images, labels, datagen, batch_size, nb_epoch, seed):
         Array of augmented images and their corresponding labels.
 
     """
-
+    samples = images.shape[0]
+    
     # the .flow() command below generates batches of randomly transformed images
- 
     gen = datagen.flow(images, labels, batch_size=batch_size, seed=seed)
 
+    # Generate empty data arrays
     pro_images = np.zeros((images.shape[0] * nb_epoch, images.shape[1],
                            images.shape[2], 1))
-    pro_labels = np.zeros((labels.shape[0] * nb_epoch, 2))
+    pro_labels = np.zeros((labels.shape[0] * nb_epoch))
     
     for epoch in range(1, nb_epoch+1):
         batch = 1
@@ -233,16 +222,21 @@ def data_pregenerate(images, labels, datagen, batch_size, nb_epoch, seed):
 
         for X_batch, Y_batch in gen:
             if batch < (samples / b):
-                pro_images[b_start + b*(batch-1):b_start + batch*b, :, :, :] = X_batch
-                pro_labels[b_start + b*(batch-1):b_start + batch*b, :] = Y_batch
+                cut_start = b_start + b*(batch-1)
+                cut_stop = b_start + batch*b
+                
+                pro_images[cut_start:cut_stop, :, :, :] = X_batch
+                pro_labels[cut_start:cut_stop] = Y_batch
                 
             elif batch == int(samples / b):
                 break
 
-            else: 
-                pro_images[b_start + b*(batch-1):b_start + b*(batch-1) + X_batch.shape[0]%b, :, :, :] = X_batch
+            else:
+                cut_start = b_start + b*(batch-1)
+                cut_stop = b_start + b*(batch-1) + X_batch.shape[0] % b
                 
-                pro_labels[b_start + b*(batch-1):b_start+b*(batch-1) + X_batch.shape[0]%b, :] = Y_batch
+                pro_images[cut_start:cut_stop, :, :, :] = X_batch
+                pro_labels[cut_start:cut_stop] = Y_batch
                 break
 
             batch += 1
@@ -252,15 +246,13 @@ def data_pregenerate(images, labels, datagen, batch_size, nb_epoch, seed):
 
 def data_pregen(train_x, train_y, test_x, test_y, 
                 datagen, batch_size, nb_epoch, seed):
-    
     """Applies data_pregenerate to both the training and testing test"""
-    
     train_x, train_y = data_pregenerate(images=train_x, labels=train_y,
                                         datagen=datagen, batch_size=batch_size,
-                                        data_mult=nb_epoch, seed=seed)
+                                        nb_epoch=nb_epoch, seed=seed)
     
     test_x, test_y  = data_pregenerate(images=test_x, labels=test_y, 
                                        datagen=datagen, batch_size=batch_size,
-                                       data_mult=nb_epoch, seed=seed)
+                                       nb_epoch=nb_epoch, seed=seed)
     
     return train_x, train_y, test_x, test_y
