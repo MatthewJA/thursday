@@ -2,3 +2,8 @@ Logistic Regression/.ipynb_checkpoints/
 *.h5
 *.dat
 .ipynb_checkpoints/
+*.pyc
+*.pkl
+final release/test.ipynb
+final release/model_hognet.ipynb
+final release/asu.tsv
