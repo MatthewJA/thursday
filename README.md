@@ -19,7 +19,7 @@ You will need
 5. Use trained models to make predictions.
 
 
-![alt text](https://raw.githubusercontent.com/username/projectname/branch/path/to/img.png)
+![alt text](https://github.com/josh-marsh/thursday/blob/reload/Basic/files/flow.jpg)
 
 ## Example
 
