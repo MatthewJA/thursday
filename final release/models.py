@@ -8,7 +8,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
 
 class SklearnModel:
-    """Creates sklearn classifer object.
+    """Instantize sklearn classifer object.
 
     Run train method to train the classifer. Use load method to return
     the trained model.
