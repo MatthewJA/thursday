@@ -200,7 +200,8 @@ class HognetModel:
             max_epoch: maximum number of epochs the model for. The model 
                 should stop training automatically when the loss stops 
                 decreasing.
-            patience:
+            patience: number of epochs with no improvement after which 
+                training will be stopped.
             plot: if true, prints model summary and plots the acc and loss on 
                 graphs
 
@@ -211,9 +212,9 @@ class HognetModel:
         """
         # Model HyperParameters
         # the following values were chosen based on both past research and thorough testing
-        bins = 8                    # number of bins in histogram
-        cell_dim = 8                # height and width of the cells  
-        block_dim = 2               # if changed, must add more block layers. Not recommended.
+        bins = 8         # number of bins in histogram
+        cell_dim = 8     # height and width of the cells  
+        block_dim = 2    # if changed, must add more block layers. Not recommended.
         bs = bin_stride_length = 1  
 
         # Number of cells along each dim 
@@ -224,8 +225,7 @@ class HognetModel:
         w = 2*np.pi/bins     # width of each bin
         centers = np.arange(-np.pi, np.pi, w) + 0.5 * w   # centers of each bin
         
-
-        # Defining Weights for the vertical and horizontal convolutions to calculate the image gradients
+        # Weights for the x and y convolutions to calculate image gradients
         prewitt_x = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]]).reshape((1, 3, 3, 1, 1)) + 0.01 * np.random.randn(1, 3, 3, 1, 1)
         prewitt_y = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]]).reshape((1, 3, 3, 1, 1)) + 0.01 * np.random.randn(1, 3, 3, 1, 1)
 
@@ -243,19 +243,23 @@ class HognetModel:
             return filters   
 
         # block_dim must be 2
-        # Increasing this will require the adding of some more tf.nn.depthwise_conv2d functions. 
-        # There is one for each element in a single filter (i.e block_dim^2)
-
+        # Increasing this will require adding more tf.nn.depthwise_conv2d functions. 
+        # There is a depthwise_conv2dfor each element in a single filter 
+        # there are block_dim^2 elements in a filter
         b_flt = create_bin_filters(2)
         
-        # copying each filter anlong the last axis to satisfy the required shape for weights array 
+        # copying each filter along the last axis 
+        # To satisfy the required shape of the weights array 
         # (see Tensorflow docs for tf.nn.depthwise_conv2d)
-        bin_filters_n = b_flt.reshape((b_flt.shape[0], b_flt.shape[1], b_flt.shape[2], 1)).repeat(bins, 3) 
-
-        # Reshaping to satisfy required shape for weight array
-        bin_filters = bin_filters_n.reshape(bin_filters_n.shape[0], bin_filters_n.shape[1],
-                                            bin_filters_n.shape[2], bin_filters_n.shape[3], 1).astype(np.float32)
+        bin_filters = b_flt.reshape((b_flt.shape[0], b_flt.shape[1], b_flt.shape[2], 1))
+        bin_filters.repeat(bins, 3)
         
+        # Reshaping to satisfy required shape for weight array
+        b_shp = bin_filters.shape
+        bin_filters = bin_filters.reshape(b_shp[0], b_shp[1], b_shp[2], b_shp[3], 1)
+        bin_filters.astype(np.float32)
+        
+        # Converting filters to tensors
         filt1 = tf.convert_to_tensor(bin_filters[0, :, :, :, :])
         filt2 = tf.convert_to_tensor(bin_filters[1, :, :, :, :])
         filt3 = tf.convert_to_tensor(bin_filters[2, :, :, :, :])
@@ -276,29 +280,39 @@ class HognetModel:
             return sin_cos
 
         def bins1(cells):
-            c_bins = tf.nn.depthwise_conv2d(cells, filt1, strides = (1, bs, bs, 1), padding="SAME")
+            c_bins = tf.nn.depthwise_conv2d(cells, filt1, strides = (1, bs, bs, 1),
+                                            padding="SAME")
             return c_bins
 
         def bins2(cells):
-            c_bins = tf.nn.depthwise_conv2d(cells, filt2, strides = (1, bs, bs, 1), padding="SAME")
+            c_bins = tf.nn.depthwise_conv2d(cells, filt2, strides = (1, bs, bs, 1),
+                                            padding="SAME")
             return c_bins 
 
         def bins3(cells):
-            c_bins = tf.nn.depthwise_conv2d(cells, filt3, strides = (1, bs, bs, 1), padding="SAME")
+            c_bins = tf.nn.depthwise_conv2d(cells, filt3, strides = (1, bs, bs, 1),
+                                            padding="SAME")
             return c_bins
 
         def bins4(cells):
-            c_bins = tf.nn.depthwise_conv2d(cells, filt4, strides = (1, bs, bs, 1), padding="SAME")
+            c_bins = tf.nn.depthwise_conv2d(cells, filt4, strides = (1, bs, bs, 1),
+                                            padding="SAME")
             return c_bins
 
         def bin_norm(bins_layer):
-            bins_norm = tf.div(bins_layer, tf.expand_dims(tf.sqrt(tf.norm(bins_layer, axis=-1)+0.00000001), -1))
+            c = 0.00000001
+            denominator = tf.expand_dims(tf.sqrt(tf.norm(bins_layer, axis=-1) + c), -1)
+            bins_norm = tf.div(bins_layer, denominator)
             return bins_norm
 
         def hog_norm(bins_layer):
-            hog_norms = tf.div(bins_layer, tf.expand_dims(tf.sqrt(tf.norm(bins_layer, axis=-1)+0.00000001), -1))
-            hog_norms_2 = tf.div(hog_norms, tf.expand_dims(tf.sqrt(tf.norm(hog_norms, axis=-1)+0.00000001), -1))
-            return hog_norms_2
+            c = 0.00000001
+            denominator = tf.expand_dims(tf.sqrt(tf.norm(bins_layer, axis=-1) + c), -1)     
+            hog_norms = tf.div(bins_layer, denominator)
+            
+            denominator = tf.expand_dims(tf.sqrt(tf.norm(hog_norms, axis=-1) + c), -1)
+            hog_norms = tf.div(hog_norms, denominator)
+            return hog_norms
 
         # Building Model 
         inputs = Input(shape = (256, 256, 1), name="input")
@@ -309,7 +323,7 @@ class HognetModel:
         y_conv = Conv2D(1, (3,3), strides=1, padding="same", data_format="channels_last", 
                         trainable=True, use_bias=False, name="conv_y")(inputs)
 
-        # Stacking since it appears you cannot have more than a single input into a layer (i.e mags and angles)
+        # Stacking you cannot multiple layer (i.e mags and angles)
         conv_stacked = Concatenate(axis=-1, name="Conv_Stacked")([x_conv, y_conv])
 
         # Calculating the gradient magnitudes and angles
@@ -329,7 +343,8 @@ class HognetModel:
         votes = Conv2D(8, kernel_size=(1, 1), strides=(1, 1), activation="relu", trainable=True, 
                        bias=False, name="votes")(sin_cos_vec) 
 
-        # A round about way of splitting the image (i.e vote array) into a bunch of non-overlapping cells of size (cell_dim, cell_dim)
+        # A round about way of splitting the image (i.e vote array) 
+        # into a bunch of non-overlapping cells of size (cell_dim, cell_dim)
         # then concateting values at each bin level, giving shape of (cell_nb, cell_nb, bins)
         # Result is an array of cells with histograms along the final axis
         cells = AveragePooling2D(pool_size=cell_dim, strides=cell_dim, name="cells")(votes)
@@ -477,7 +492,7 @@ class HognetModel:
                 plt.grid(True)
                 plt.show()  
         
-        """
+        
         # Saving Model
         if self.path is None:
             model_path = self.name + "_model.json"
@@ -495,7 +510,7 @@ class HognetModel:
         model_json = model.to_json()
         with open(model_path, "w") as json_file:
             json_file.write(model_json)
-        """
+        
 
         return model
         
@@ -522,7 +537,4 @@ class HognetModel:
         
 
         return model
-
-
-
     
