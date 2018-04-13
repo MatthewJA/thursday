@@ -1,8 +1,9 @@
 """Functions for formatting, preprocessing, and augmentation."""
 
-import sys
+import math
 import os
 import pickle
+import sys
 
 from astropy.coordinates import SkyCoord
 import astropy.io.ascii  as asc
@@ -241,7 +242,9 @@ def data_pregenerate(images, labels, datagen, batch_size, nb_epoch, seed):
                 break
 
             batch += 1
-        
+    
+    pro_images = np.reshape(pro_images, (np.shape(pro_images)[0], -1))
+    
     return pro_images, pro_labels
 
 
@@ -253,7 +256,7 @@ def data_pregen(train_x, train_y, test_x, test_y,
                                         nb_epoch=nb_epoch, seed=seed)
     
     test_x, test_y  = data_pregenerate(images=test_x, labels=test_y, 
-                                       datagen=datagen, batch_size=batch_size,
+                                       datagen=datagen, batch_size=math.ceil(batch_size / 5),
                                        nb_epoch=nb_epoch, seed=seed)
     
     return train_x, train_y, test_x, test_y
