@@ -49,13 +49,13 @@ def get_data(fr_data_path, aniyan_path):
         aniyan_path: File path of the second dataset. Must be a .tsv file 
             of the exact format as the one used for this script 
             (see https://github.com/josh-marsh/thursday)
-        seed: Random seed. All our tests used 0.
+        seed: Seed value to consistently initialize the random number 
+            generator.  
        
     # Returns
-        Training and testing data in the form:
-        (train_x, train_y, test_x, test_y). There are an equal number of 
-        FRIs and FRIIs in each set, with the rest discarded. The shapes 
-        of train_x and test_x are (samples, dim, dim, 1).
+        Locations training and testing data as Boolean arrays with shape 
+        [samples,]. There are an equal number of FRIs and FRIIs in each 
+        set, with the rest discarded.
     """
     # Loading data
     with h5py.File(fr_data_path, 'r') as data:
@@ -104,8 +104,8 @@ def get_data(fr_data_path, aniyan_path):
     leftover_fr = np.concatenate((fri_leftover, frii_leftover), axis=0)
 
     # Training and testing sets
-    train_i = aniyan_fr
-    test_i = leftover_fr
+    train_i = leftover_fr
+    test_i = aniyan_fr
 
     return train_i, test_i
 
@@ -125,8 +125,23 @@ def add_noise(image):
 
     
 def augment_data(rotation_range=180, zoom_range=0.2, shift_range=0.0, flip=True):
-    """ Initializes data generator."""
-    # Defining Data Generator
+    """ Initializes data generator.
+
+    Arguments:
+        rotation_range: Int. Degree range for random rotations.
+        shift_range: Float (fraction of total width). Range for random 
+            horizontal and vertical shifts.
+        zoom_range: Float or [lower, upper]. Range for random zoom. If a 
+            float, [lower, upper] = [1-zoom_range, 1+zoom_range]
+        horizontal_flip: Boolean. Randomly flip inputs horizontally.
+        fill_mode: One of {"constant", "nearest", "reflect" or "wrap"}. Default 
+            is 'nearest'. Points outside the boundaries of the input are filled
+            according to the given mode
+        preprocessing_function: function that will be implied on each input. 
+            The function will run after the image is resized and augmented. The 
+            function should take one argument: one image (Numpy tensor with 
+            rank 3), and should output a Numpy tensor with the same shape.
+    """
     datagen = ImageDataGenerator(
                 rotation_range=rotation_range,
                 zoom_range=zoom_range,
