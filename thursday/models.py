@@ -23,7 +23,6 @@ from keras.layers import multiply
 from keras.models import load_model
 from keras.models import Model
 from keras.models import model_from_json
-
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
@@ -45,12 +44,15 @@ class SklearnModel:
     using the load method at any point on the script. 
 
     Attributes:
-    Model: Sklearn classifier.
-    name: name of the file at which the model is saved. 
-        No file extension.
-    path: Path of data folder. Dfaults to current directory
-    seed: Random seed. All our tests used 0.
-    kwargs: All other parameters specific to Model type. 
+        Model: Sklearn classifier.
+        datagen: The output of the data_gen function to apply random 
+            augmentations to our data in real time 
+            (a keras.preprocessing.image.ImageDataGenerator object)
+        nb_augment: Int. Factor by which the number of samples is 
+            increased by random augmentations.
+        seed: Seed value to consistently initialize the random number 
+            generator.
+        **kwargs: Keyword arguments passed to sklearn. 
     """   
     def __init__(self, Model, datagen=None, nb_augment=None, seed=0, **kwargs):
         self.Model = Model
@@ -65,16 +67,17 @@ class SklearnModel:
     def fit(self, train_x, train_y):
         """Trains sklearn model.
 
-        # Arguments
-            images: Array of images with shape (samples, dim, dim, 1).
-            labels: Array of labels with shape (samples ,).
+        # Arguments:
+            train_x: Array of images with shape [samples, dim, dim, 1].
+            train_y: Array of labels with shape [samples ,].
 
-        # Returns
-            Updated state where self.model is a fully trained sklearn classifer
+        # Returns:
+            self
         """ 
         # Augmenting data 
         if self.datagen is not None:
-            train_x, train_y = self.augment(train_x, train_y, batch_size=train_x.shape[0], nb_augment=self.nb_augment)
+            train_x, train_y = self.augment(train_x, train_y, batch_size=
+                train_x.shape[0], nb_augment=self.nb_augment)
 
         # Flattening images
         train_x = np.reshape(train_x, (np.shape(train_x)[0], -1))
@@ -88,7 +91,14 @@ class SklearnModel:
 
 
     def predict_proba(self, test_x):
-        """ Probability estimates for samples"""
+        """ Probability estimates for samples.
+
+        # Arguments:
+            test_x: Array of images with shape [samples, dim, dim, 1].
+
+        # Returns:
+            predictions: Probability estimates for test_x.
+        """
         # Flattening images
         test_x = np.reshape(test_x, (np.shape(test_x)[0], -1))
 
@@ -97,14 +107,28 @@ class SklearnModel:
         return predictions
 
     def predict(self, test_x):
-        """Predicting class labels for samples in test_x."""
+        """Predicting class labels for samples in test_x.
+        
+        # Arguments:
+            test_x: Array of images with shape [samples, dim, dim, 1].
+
+        # Returns:
+            predictions: Class predictions for test_x.
+
+        """
         predictions = self.predict_proba(test_x)
         predictions = np.around(predictions)
 
         return predictions
 
     def save(self, path=None):
-        """Saves model as pickle file"""
+        """Saves model as pickle file.
+        # Arguments:
+            path: File path to save the model. Must be a .pk file.
+
+        # Returns:
+            self
+        """
         self.path = path
         
         with open(path, 'wb') as f:
@@ -113,7 +137,14 @@ class SklearnModel:
         return self
     
     def load(self, path=None):    
-        """Loads trained Sklearn Model from disk"""
+        """Loads trained Sklearn Model from disk.
+
+        # Arguments:
+            path: File path load saved the model from..
+
+        # Returns:
+            self
+        """
         if path is None:
             if self.path is not None:
                 path =  self.path
@@ -139,7 +170,8 @@ class SklearnModel:
             datagen: The data generator outputed by the data_gen function.
             batch_size: Number of sample per batch.
             nb_augment: factor that the data is increased by via augmentation
-            seed: Random seed. All our tests used 0.
+            seed: Seed value to consistently initialize the random number 
+                generator.
             
         # Returns
             Array of augmented images and their corresponding labels.
@@ -200,74 +232,26 @@ class HOGNet:
     disk at any point in the script. This method can be useful when using 
     notebooks, as training time can be significant.
 
-
-    We introduce a tensor-based implementation of the HOG feature 
-    extractor, built in Keras and Tensorflow. It is, to our knowledge,
-    the first of its kind. To restrict all operations to the tensor
-    domain, we approximate the previously employed histogram bin
-    construction methodology, known as voting via bi-linear interpolation,
-    as the scalar projection of angle vectors onto bin unit vector. Since
-    this is defined as a simple dot product between the two aforementioned
-    vectors, we can implement this as a Convolution2D operation, with the
-    angle vectors as the input and the bin unit vectors as the filters, 
-    with each filter representing a single unit vector that operates on
-    every angle vector in the image. A Relu activation function operates
-    on the output to curb the influence of negative projections. The 
-    reshaping required for the bin operations broken into separate 
-    depthwise convolution2D operations (via Tensorflow) followed via a 
-    Concatenation.
-
-    As both Tensorflow allows the automatic computation of gradients, 
-    unlike the SkImage HOG, our tensor-based HOG enables backpropagation
-    through HOG. This opens up an array of previously unexplored 
-    possibilities, such as allowing our initial weights to train, boosting
-    accuracy by roughly 2% with a logistic regression. 
-    
-    The primary benefit of this classier is that it allows us to utilize
-    the power of state of the art convolutional neural networks like 
-    VGG19 on an extremely small set of data (the convolutional blocks 
-    of this implementation are a vastly simpler version of our highest 
-    performing model, which is heavily inspired by VGG19). Our 
-    tensor-based HOG feature extractor simultaneously reduces 
-    dimensionality of the vertical and horizontal axes (by 8 each in
-    our tests) and while drastically increasing the dimensionality on
-    the third axis (by a factor of 32 in our tests, with 8 bins and a
-    block area of 2^2) by way of unique feature maps. Each of these 
-    feature maps, representing intensity gradients in varying angle 
-    ranges in a different normalization region for each block, can be
-    thought of as the output of a different filter from a Cov2D layer
-    followed by a max-pooling layer (or more accurately, an 
-    average-pooling layer). The reduced dimensionality of the first two 
-    axes allows us to use VGG19. Repeated Max-pooling operations reduce
-    the output of the final convolution block, reducing the number of weights 
-    in the Dense classification block to a point where training on less 
-    than 70 samples per class is feasible. 
-    
-    All classifiers we tested (which granted was not very many)
-    trained up 5-100 times faster (if at all) on the output array of the 
-    tensor-based HOG than raw images. Our guess is that our tensor-based
-    HOG drastically reduces problem complexity, and thus the time it 
-    takes for the optimizer to converge on the weights. It also slighly 
-    increased accuracy.
-
     Attributes:
-    name: name of the file at which the model is saved. 
-        No file extension.
-    datagen: The output of the data_gen function to apply random 
-        augmentations to our data in real time 
-        (a keras.preprocessing.image.ImageDataGenerator object)
-    batch_size: number of images per batch (i.e number of images 
-                generated per batch)
-    steps_per_epoch: number of batchs per epoch (i.e number of 
-        batches generated by datagen per epoch)
-    max_epoch: maximum number of epochs the model for. The model 
-        should stop training automatically when the loss stops 
-        decreasing.
-    patience: number of epochs with no improvement after which 
-        training will be stopped.
-    seed: Random seed. All our tests used 0.
+        name: name of the file at which the model is saved. 
+            No file extension.
+        datagen: The output of the data_gen function to apply random 
+            augmentations to our data in real time 
+            (a keras.preprocessing.image.ImageDataGenerator object)
+        batch_size: number of images per batch (i.e number of images 
+                    generated per batch)
+        steps_per_epoch: number of batchs per epoch (i.e number of 
+            batches generated by datagen per epoch)
+        max_epoch: maximum number of epochs the model for. The model 
+            should stop training automatically when the loss stops 
+            decreasing.
+        patience: number of epochs with no improvement after which 
+            training will be stopped.
+        seed: Seed value to consistently initialize the random number 
+            generator.
     """     
-    def __init__(self, datagen=None, batch_size=32, steps_per_epoch=50, max_epoch=100, patience=5, seed=None):
+    def __init__(self, datagen=None, batch_size=32, steps_per_epoch=50, 
+                                max_epoch=100, patience=5, seed=None):
         self.datagen = datagen
         self.batch_size = batch_size
         self.steps_per_epoch = steps_per_epoch
@@ -287,10 +271,10 @@ class HOGNet:
         tf.set_random_seed(self.seed)
 
         # Model HyperParameters
-        # The following values were chosen based on both past research and thorough testing
+        # The following values are base on both past research and much testing
         bins = 8         # number of bins in histogram
         cell_dim = 8     # height and width of the cells  
-        block_dim = 2    # if changed, must add more block layers. Not recommended.
+        block_dim = 2    # if changed, must add more block layers. Don't attempt.
         bs = bin_stride_length =  1 
 
         # Number of cells along each dim 
@@ -302,10 +286,20 @@ class HOGNet:
         centers = np.arange(-np.pi, np.pi, w) + 0.5 * w   # centers of each bin
         
         # Weights for the x and y convolutions to calculate image gradients
-        self.prewitt_x = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]]).reshape((1, 3, 3, 1, 1)) + 0.01 * np.random.randn(1, 3, 3, 1, 1)
-        self.prewitt_y = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]]).reshape((1, 3, 3, 1, 1)) + 0.01 * np.random.randn(1, 3, 3, 1, 1)
+        prewitt_x = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
+        prewitt_y = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]])
+        
+        # Reshaping Prewitt opperators to required shape
+        self.prewitt_x = prewitt_x.reshape((1, 3, 3, 1, 1)).astype('float64')
+        self.prewitt_y = prewitt_y.reshape((1, 3, 3, 1, 1)).astype('float64') 
 
-        self.cent = np.vstack((np.sin(centers), np.cos(centers))).reshape((1, 1, 1, 2, 8))
+        # Adding tiny gaussian noise
+        self.prewitt_x += 0.01 * np.random.randn(1, 3, 3, 1, 1)
+        self.prewitt_y += 0.01 * np.random.randn(1, 3, 3, 1, 1)
+
+        # Generating weights for histogram construction
+        self.cent = np.vstack((np.sin(centers), np.cos(centers)))
+        self.cent = self.cent.reshape((1, 1, 1, 2, bins))
 
         # Generating Filters for the block Operations
         def create_block_filters(block_dim):
@@ -337,7 +331,6 @@ class HOGNet:
         filt2 = tf.convert_to_tensor(block_filters[1, :, :, :, :])
         filt3 = tf.convert_to_tensor(block_filters[2, :, :, :, :])
         filt4 = tf.convert_to_tensor(block_filters[3, :, :, :, :])
-
         filt1 = tf.cast(filt1, dtype=tf.float32)
         filt2 = tf.cast(filt2, dtype=tf.float32)
         filt3 = tf.cast(filt3, dtype=tf.float32)
@@ -371,87 +364,97 @@ class HOGNet:
             c_blocks = tf.nn.depthwise_conv2d(cells, filt3, strides=(1, bs, bs, 1),
                                             padding="SAME")
             return c_blocks
+
         def block4(cells):
             c_blocks = tf.nn.depthwise_conv2d(cells, filt4, strides=(1, bs, bs, 1),
                                             padding="SAME")
             return c_blocks
 
-        def block_norm(bins_layer):
+        def block_norm_function(bins_layer):
             c = 0.00000001
-            denominator = tf.expand_dims(tf.sqrt(tf.norm(block_layer, axis=-1) + c), -1)
-            block_norm = tf.div(block_layer, denominator)
+            divisor = tf.expand_dims(tf.sqrt(tf.norm(block_layer, axis=-1) + c), -1)
+            block_norm = tf.div(block_layer, divisor)
             return block_norm
 
-        def hog_norm(bins_layer):
+        def hog_norm_function(bins_layer):
             c = 0.00000001
-            denominator = tf.expand_dims(tf.sqrt(tf.norm(bins_layer, axis=-1) + c), -1)     
-            hog_norms = tf.div(bins_layer, denominator)
+            divisor = tf.expand_dims(tf.sqrt(tf.norm(bins_layer, axis=-1) + c), -1)     
+            hog_norms = tf.div(bins_layer, divisor)
             
-            denominator = tf.expand_dims(tf.sqrt(tf.norm(hog_norms, axis=-1) + c), -1)
-            hog_norms = tf.div(hog_norms, denominator)
+            divisor = tf.expand_dims(tf.sqrt(tf.norm(hog_norms, axis=-1) + c), -1)
+            hog_norms = tf.div(hog_norms, divisor)
             return hog_norms
 
         # Building Model 
         inputs = Input(shape=(256, 256, 1), name="input")
 
         # Convolutions
-        x_conv = Conv2D(1, (3,3), strides=(1, 1), padding="same", data_format="channels_last", 
-                        trainable=True, use_bias=False, name="conv_x")(inputs)
-        y_conv = Conv2D(1, (3,3), strides=(1, 1), padding="same", data_format="channels_last", 
-                        trainable=True, use_bias=False, name="conv_y")(inputs)
+        x_conv = Conv2D(1, (3,3), strides=(1, 1), padding="same", 
+                data_format="channels_last", trainable=True, use_bias=False, 
+                                        name="conv_x")(inputs)
+
+        y_conv = Conv2D(1, (3,3), strides=(1, 1), padding="same", 
+                data_format="channels_last", trainable=True, use_bias=False, 
+                                        name="conv_y")(inputs)
 
         # Stacking you cannot multiple layer (i.e mags and angles)
         conv_stacked = Concatenate(axis=-1, name="Conv_Stacked")([x_conv, y_conv])
 
         # Calculating the gradient magnitudes and angles
-        mags = Lambda(calculate_magnitudes, output_shape=(256, 256), name="mags1")(conv_stacked)
-        mags = Lambda(lambda x: K.stack((mags, mags), axis=-1), name="mags2")(mags)   # To enable sin_cos_vec 
-        angles = Lambda(calculate_angles, output_shape=(256, 256), name="angles")(conv_stacked)
+        mags = Lambda(calculate_magnitudes, output_shape=(256, 256), 
+                                        name="mags1")(conv_stacked)
+        mags = Lambda(lambda x: K.stack((mags, mags), axis=-1), 
+                                        name="mags2")(mags)   # To enable sin_cos_vec 
+        angles = Lambda(calculate_angles, output_shape=(256, 256), 
+                                        name="angles")(conv_stacked)
 
         # Calculating the components of angles in the x and y direction
         # Then multiplying by magnitudes, giving angle vectors
-        sin_cos = Lambda(calculate_sin_cos, output_shape=(256, 256, 2), name="sin_cos")(angles)
+        sin_cos = Lambda(calculate_sin_cos, output_shape=(256, 256, 2), 
+                                        name="sin_cos")(angles)
         sin_cos_vec = multiply([sin_cos, mags], name="sin_cos_mag")
 
-        # Applying each filter (representing a single bin unit vector) to every angle vector in the image.
+        # Applying each filter (a single bin unit vector) to each angle vector.
         # Result is an array with shape (img_height, img_width, bins) 
         # where each bin contains an angle vectors that contribution to each bin
-        # Relu activation function to remove negative projections (represented by negative scalar dot products).
-        votes = Conv2D(8, kernel_size=(1, 1), strides=(1, 1), activation="relu", trainable=True, 
-                       bias=False, name="votes")(sin_cos_vec) 
+        # Relu activation function to remove negative projections.
+        votes = Conv2D(8, kernel_size=(1, 1), strides=(1, 1), activation="relu", 
+                        trainable=True, bias=False, name="votes")(sin_cos_vec) 
 
         # A round about way of splitting the image (i.e vote array) 
         # into a bunch of non-overlapping cells of size (cell_dim, cell_dim)
-        # then concateting values at each bin level, giving shape of (cell_nb, cell_nb, bins)
+        # Concatenating values at each bin level, giving shape (cell_nb, cell_nb, bins)
         # Result is an array of cells with histograms along the final axis
         cells = AveragePooling2D(pool_size=cell_dim, strides=cell_dim, name="cells")(votes)
         cells = Lambda(lambda x: x * (cell_dim ** 2), name="cells2")(cells)
 
         # Bin Operations
         # Assuming that bin shape = (2, 2)
-        # A round about way of grouping the cells into overlapping blocks of 2 * 2 cells each. 
-        # Two horizontally or vertically consecutive blocks overlap by two cells, that is, the block strides. 
+        # Ad hoc way of  grouping the cells into overlapping blocks of 2 * 2 cells each. 
+        # Two horizontally or vertically consecutive blocks overlap by two cells,
+        # i.e block strides. 
         # As a consequence, each internal cell is covered by four blocks (if bin_dim=2).
         block1_layer = Lambda(block1, trainable=True, name="block1")(cells)
         block2_layer = Lambda(block2, trainable=True, name="block2")(cells)
         block3_layer = Lambda(block3, trainable=True, name="block3")(cells)
         block4_layer = Lambda(block4, trainable=True, name="block4")(cells)
-        block_layer = Concatenate(axis=-1)([block1_layer, block2_layer, block3_layer, block4_layer])
+        block_layer = Concatenate(axis=-1)([block1_layer, block2_layer, 
+                                            block3_layer, block4_layer])
 
         # normalize each block feature by its Euclidean norm
-        block_norm_layer = Lambda(block_norm, name="norm1")(block_layer)
-        hog_norm_layer = Lambda(hog_norm, name="norm2")(block_norm_layer)
+        block_norm = Lambda(block_norm_function, name="norm1")(block_layer)
+        hog_norm = Lambda(hog_norm_function, name="norm2")(block_norm)
 
         # Block 1
-        x = Conv2D(4, (3, 3), activation='relu', padding='same', name='block1_conv1')(hog_norm_layer)
-        x = Conv2D(4, (3, 3), activation='relu', padding='same', name='block1_conv2')(x)
-        x = Conv2D(4, (3, 3), activation='relu', padding='same', name='block1_conv3')(x)
+        x = Conv2D(4, (3, 3), activation='relu', padding='same', name='block1_1')(hog_norm)
+        x = Conv2D(4, (3, 3), activation='relu', padding='same', name='block1_2')(x)
+        x = Conv2D(4, (3, 3), activation='relu', padding='same', name='block1_3')(x)
         x = MaxPooling2D((2, 2), strides=(2, 2), name='block1_pool')(x)
 
         # Block 2
-        x = Conv2D(8, (3, 3), activation='relu', padding='same', name='block2_conv1')(x)
-        x = Conv2D(8, (3, 3), activation='relu', padding='same', name='block2_conv2')(x)
-        x = Conv2D(8, (3, 3), activation='relu', padding='same', name='block2_conv3')(x)
+        x = Conv2D(8, (3, 3), activation='relu', padding='same', name='block2_1')(x)
+        x = Conv2D(8, (3, 3), activation='relu', padding='same', name='block2_2')(x)
+        x = Conv2D(8, (3, 3), activation='relu', padding='same', name='block2_3')(x)
         x = MaxPooling2D((2, 2), strides=(2, 2), name='block2_pool')(x)
 
         # Dense
@@ -470,7 +473,7 @@ class HOGNet:
         self.model = model
 
     def fit(self, train_x, train_y, val_x=None, val_y=None):
-        """Defines and trains hognet.
+        """Fits HOGNet parameters to training data.
     
         Using the set hyperparameters, our custom initial weights are 
         generated, our custom keras layers are defined in tensorflow, and 
@@ -480,8 +483,6 @@ class HOGNet:
         is reduced when the loss plateaus. When the model stops improving 
         for a set number of epochs (patience), training stops, and a  
         model is returned. 
-        
-         
         
         # Arguments
             train_x: Images to train on with shape (samples, dim, dim, 1)
@@ -541,32 +542,51 @@ class HOGNet:
                     ReduceLROnPlateau(monitor='val_loss', patience=5, verbose=1),
                     LossHistory()]
             
-            self.model.fit_generator(self.datagen.flow(train_x, train_y, batch_size=self.batch_size, shuffle=True), 
-                                steps_per_epoch=self.steps_per_epoch, epochs=self.max_epoch,
-                                validation_data=self.datagen.flow(val_x, val_y, batch_size=self.batch_size,
-                                                                 shuffle=True),
-                                validation_steps=math.ceil(self.steps_per_epoch / 5), callbacks=callback)
+            self.model.fit_generator(self.datagen.flow(train_x, train_y, 
+                    batch_size=self.batch_size, shuffle=True), 
+                    steps_per_epoch=self.steps_per_epoch, epochs=self.max_epoch,
+                    validation_data=self.datagen.flow(val_x, val_y, 
+                    batch_size=self.batch_size, shuffle=True),
+                    validation_steps=math.ceil(self.steps_per_epoch / 5), 
+                    callbacks=callback)
 
         else:
             callback = [EarlyStopping(monitor='loss', patience=self.patience),
                     ReduceLROnPlateau(monitor='loss', patience=5, verbose=1),
                     LossHistory()]
-            self.model.fit_generator(self.datagen.flow(train_x, train_y, batch_size=self.batch_size, shuffle=True), 
-                            steps_per_epoch=self.steps_per_epoch, epochs=self.max_epoch, 
-                            callbacks=callback)
+            self.model.fit_generator(self.datagen.flow(train_x, train_y, 
+                    batch_size=self.batch_size, shuffle=True), 
+                    steps_per_epoch=self.steps_per_epoch, epochs=self.max_epoch, 
+                    callbacks=callback)
 
         self.history = callback[2]
 
         return self
 
     def predict_proba(self, test_x):
-        """ Probability estimates for samples"""
+        """ Probability estimates for samples.
+
+        # Arguments:
+            test_x: Array of images with shape [samples, dim, dim, 1].
+
+        # Returns:
+            predictions: Probability estimates for test_x as a confusion
+                matrix. Shape of [smaples, 2].
+        """
         predictions =  self.model.predict(test_x, batch_size=self.batch_size)
 
         return predictions
 
     def predict (self, test_x):
-        """Predicting class labels for samples in test_x."""
+        """Predicting class labels for samples in test_x.
+        
+        # Arguments:
+            test_x: Array of images with shape [samples, dim, dim, 1].
+
+        # Returns:
+            predictions: Probability estimates for test_x as a confusion
+                matrix. Shape of [smaples, 2].
+        """
         predictions =  self.predict_proba(test_x)
         predictions = np.around(predictions)
 
@@ -574,7 +594,15 @@ class HOGNet:
 
 
     def save (self, path=None):
-        """Serialize model weights to HDF5"""
+        """Serialize model weights to HDF5.
+
+        # Arguments:
+            path: File path to save the model weights. Must be a .h5 
+                file.
+
+        # Returns:
+            self
+        """
         self.model.save_weights(path)
 
         self.path = path
@@ -583,7 +611,16 @@ class HOGNet:
 
         
     def load(self, path=None):
-        """Loads weights into keras Model from disk"""
+        """Loads weights into keras Model from disk.
+
+        Loads trained Sklearn Model from disk.
+
+        # Arguments:
+            path: File path to load saved weights from from.
+
+        # Returns:
+            self
+        """
         if path is None:
             path = self.path
         

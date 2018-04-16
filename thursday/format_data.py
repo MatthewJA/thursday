@@ -19,7 +19,7 @@ from sklearn.utils import shuffle
 
 def resize(images, dim=None):
     """Rescales array of images to specified dimensions."""
-    size = np.shape(images)[0]
+    size = images.shape[0]
     imgs = np.zeros((size, dim, dim))
 
     for i in range(size):
