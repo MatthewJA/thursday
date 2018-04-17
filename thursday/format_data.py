@@ -28,7 +28,7 @@ def resize(images, dim=None):
     return imgs
 
 
-def get_data(fr_data_path, aniyan_path):
+def get_data(fr_data_path, aniyan_path, seed=0):
     """Formats data into training and testing sets.
     
     Takes a base dataset and a second dataset in specific formats. 
@@ -41,7 +41,6 @@ def get_data(fr_data_path, aniyan_path):
     base dataset are formated into a balanced training set and the 
     extracted images are formatted into a balanced testing set.
     
-    
     # Arguments
         fr_data_path: File path of the base dataset. Must be a h5py file 
             of the exact format as the one used for this script 
@@ -50,7 +49,7 @@ def get_data(fr_data_path, aniyan_path):
             of the exact format as the one used for this script 
             (see https://github.com/josh-marsh/thursday)
         seed: Seed value to consistently initialize the random number 
-            generator.  
+                generator.  
        
     # Returns
         Locations training and testing data as Boolean arrays with shape 
@@ -100,15 +99,38 @@ def get_data(fr_data_path, aniyan_path):
     fri_leftover = ~fri_in_aniyan
     frii_leftover = ~frii_in_aniyan
 
-    aniyan_fr = np.concatenate((fri_in_aniyan, frii_in_aniyan), axis=0)
-    leftover_fr = np.concatenate((fri_leftover, frii_leftover), axis=0)
+    # Fectching indices
+    fri_in_aniyan = np.where(fri_in_aniyan)[0]
+    frii_in_aniyan = np.where(frii_in_aniyan)[0]
+
+    fri_leftover = np.where(fri_leftover)[0]
+    frii_leftover = np.where(frii_leftover)[0]
+
+    # Finding the number of samples in the smallest fr class
+    # So there are an equal amount of each class in each set
+    aniyan_cut = np.min(np.array([fri_in_aniyan.shape[0], frii_in_aniyan.shape[0]]))
+    leftover_cut = np.min(np.array([fri_leftover.shape[0], frii_leftover.shape[0]]))
+
+    # Shuffling before discarding
+    fri_in_aniyan = shuffle(fri_in_aniyan, random_state=seed)
+    frii_in_aniyan = shuffle(frii_in_aniyan, random_state=seed)
+    fri_leftover = shuffle(fri_leftover, random_state=seed)
+    frii_leftover = shuffle(frii_leftover, random_state=seed)
+
+    # Discarding samples
+    fri_in_aniyan = np.sort(fri_in_aniyan[:aniyan_cut], axis=0)
+    frii_in_aniyan = np.sort(frii_in_aniyan[:aniyan_cut], axis=0)
+    fri_leftover = np.sort(fri_leftover[:leftover_cut], axis=0)
+    frii_leftover = np.sort(frii_leftover[:leftover_cut], axis=0)
+    
+    aniyan = np.concatenate((fri_in_aniyan, frii_in_aniyan), axis=0)
+    leftover = np.concatenate((fri_leftover, frii_leftover), axis=0)
 
     # Training and testing sets
-    train_i = leftover_fr
-    test_i = aniyan_fr
+    train_i = leftover
+    test_i = aniyan
 
     return train_i, test_i
-
 
 def add_noise(image):
         """ Adds tiny random Gaussian Noise to each image. 
@@ -121,8 +143,8 @@ def add_noise(image):
          keras layer.
          """
         image += 10e-10 * np.random.randn(image.shape[0], image.shape[1], 1)
+        
         return image
-
     
 def augment_data(rotation_range=180, zoom_range=0.2, shift_range=0.0, flip=True):
     """ Initializes data generator.
