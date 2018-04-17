@@ -465,7 +465,7 @@ class HOGNet:
         x = Dropout(0.2)(x)
         x = Dense(50, activation='relu', name='fc3')(x)
         x = Dropout(0.2)(x)
-        logistic_reg = Dense(2, activation = "softmax", trainable=True, name="lr")(x)
+        logistic_reg = Dense(1, activation = "softmax", trainable=True, name="lr")(x)
 
         # Building Model
         model = Model(inputs=inputs, outputs=logistic_reg)
