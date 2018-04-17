@@ -132,6 +132,58 @@ def get_data(fr_data_path, aniyan_path, seed=0):
 
     return train_i, test_i
 
+def get_fr_data(fr_data_path, split_ratio=0.5):
+    """Splits FR data into a training and testing set.
+    
+    # Arguments
+        fr_data_path: File path of the base dataset. Must be a h5py file 
+            of the exact format as the one used for this script 
+            (see https://github.com/josh-marsh/thursday)
+        split_ratio: Factor of the data used for testing. The value 
+            is rounded to the nearest indice. Default is 0.5.
+       
+    # Returns
+        Locations training and testing data as Boolean arrays with shape 
+        [samples,]. There are an equal number of FRIs and FRIIs in each 
+        set, with the rest discarded.
+    """
+    # Loading data
+    with h5py.File(fr_data_path, 'r') as data:
+        labels = data['labels'].value.astype(bool)
+        
+        fri_data = data['fri_data']
+        frii_data = data['frii_data']
+    
+    # Splitting classes
+    fri_ind  = np.where(~labels)[0]
+    frii_ind = np.where(labels)[0]
+
+    # Finding the number of samples in the smallest fr class
+    # So there are an equal amount of each class in each set
+    cut = np.min(np.array([fri_ind.shape[0], frii_ind.shape[0]]))
+    cut = cut - cut % 2    # So there can be an even train/test split
+
+    # Shuffling before discarding
+    fri_ind = shuffle(fri_ind, random_state=seed)
+    frii_ind = shuffle(frii_ind, random_state=seed)
+
+    # Discarding samples
+    fri_ind = np.sort(fri_ind[:cut], axis=0)
+    frii_ind = np.sort(frii_ind[:cut], axis=0)
+
+    # Slitting into training and testing sets
+    split_i = cut // split_ratio
+
+    train_fri = fri_ind[split_i:]
+    train_frii = frii_ind[split_i:]
+    test_fri = fri_ind[:split_i]
+    test_frii = frii_ind[:split_i]
+
+    train = np.concatenate((train_fri, train_frii), axis=0)
+    test = np.concatenate((test_fri, test_frii), axis=0)
+
+    return train_i, test_i
+
 def add_noise(image):
         """ Adds tiny random Gaussian Noise to each image. 
         
@@ -145,7 +197,7 @@ def add_noise(image):
         image += 10e-10 * np.random.randn(image.shape[0], image.shape[1], 1)
         
         return image
-    
+
 def augment_data(rotation_range=180, zoom_range=0.2, shift_range=0.0, flip=True):
     """ Initializes data generator.
 
