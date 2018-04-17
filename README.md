@@ -23,7 +23,7 @@ You will need
 9. Use `predict` method to predict class labels and `predict_proba` class probabilities for unseen samples (`test_x`). 
 
 
-![alt text](https://github.com/josh-marsh/thursday/blob/reload/Basic/files/flow.jpg)
+![flow](https://raw.githubusercontent.com/MatthewJA/thursday/master/Basic/files/flow.jpg)
 
 ## Example
 
