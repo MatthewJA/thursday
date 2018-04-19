@@ -52,7 +52,7 @@ def get_data(fr_data_path, aniyan_path, seed=0):
                 generator.  
        
     # Returns
-        Locations training and testing data as Boolean arrays with shape 
+        Locations training and testing data with shape 
         [samples,]. There are an equal number of FRIs and FRIIs in each 
         set, with the rest discarded.
     """
@@ -101,10 +101,10 @@ def get_data(fr_data_path, aniyan_path, seed=0):
 
     # Fectching indices
     fri_in_aniyan = np.where(fri_in_aniyan)[0]
-    frii_in_aniyan = np.where(frii_in_aniyan)[0]
+    frii_in_aniyan = np.where(frii_in_aniyan)[0] + np.where(fri_ind)[0].shape[0]
 
     fri_leftover = np.where(fri_leftover)[0]
-    frii_leftover = np.where(frii_leftover)[0]
+    frii_leftover = np.where(frii_leftover)[0] + np.where(fri_ind)[0].shape[0]
 
     # Finding the number of samples in the smallest fr class
     # So there are an equal amount of each class in each set
@@ -118,21 +118,29 @@ def get_data(fr_data_path, aniyan_path, seed=0):
     frii_leftover = shuffle(frii_leftover, random_state=seed)
 
     # Discarding samples
-    fri_in_aniyan = np.sort(fri_in_aniyan[:aniyan_cut], axis=0)
-    frii_in_aniyan = np.sort(frii_in_aniyan[:aniyan_cut], axis=0)
-    fri_leftover = np.sort(fri_leftover[:leftover_cut], axis=0)
-    frii_leftover = np.sort(frii_leftover[:leftover_cut], axis=0)
-    
+    fri_in_aniyan = fri_in_aniyan[:aniyan_cut]
+    frii_in_aniyan = frii_in_aniyan[:aniyan_cut]
+    fri_leftover = fri_leftover[:leftover_cut]
+    frii_leftover = frii_leftover[:leftover_cut]
+
     aniyan = np.concatenate((fri_in_aniyan, frii_in_aniyan), axis=0)
     leftover = np.concatenate((fri_leftover, frii_leftover), axis=0)
+
+    # Shuffling FRI's and FRII's
+    aniyan = np.sort(shuffle(aniyan, random_state=seed), axis=0)
+    leftover = np.sort(shuffle(leftover, random_state=seed), axis=0)
 
     # Training and testing sets
     train_i = leftover
     test_i = aniyan
 
+    # Shuffling FRI's and FRII's
+    train_i = shuffle(train_i, random_state=seed)
+    test_i = shuffle(test_i, random_state=seed)
+
     return train_i, test_i
 
-def get_fr_data(fr_data_path, split_ratio=0.5):
+def get_fr_data(fr_data_path, split_ratio=0.5, seed=0):
     """Splits FR data into a training and testing set.
     
     # Arguments
@@ -141,18 +149,17 @@ def get_fr_data(fr_data_path, split_ratio=0.5):
             (see https://github.com/josh-marsh/thursday)
         split_ratio: Factor of the data used for testing. The value 
             is rounded to the nearest indice. Default is 0.5.
+        seed: Seed value to consistently initialize the random number 
+            generator.
        
     # Returns
-        Locations training and testing data as Boolean arrays with shape 
-        [samples,]. There are an equal number of FRIs and FRIIs in each 
-        set, with the rest discarded.
+        Locations training and testing data  with shape [samples,]. 
+        There are an equal number of FRIs and FRIIs in each set, with the
+        rest discarded.
     """
     # Loading data
     with h5py.File(fr_data_path, 'r') as data:
         labels = data['labels'].value.astype(bool)
-        
-        fri_data = data['fri_data']
-        frii_data = data['frii_data']
     
     # Splitting classes
     fri_ind  = np.where(~labels)[0]
@@ -172,15 +179,19 @@ def get_fr_data(fr_data_path, split_ratio=0.5):
     frii_ind = np.sort(frii_ind[:cut], axis=0)
 
     # Slitting into training and testing sets
-    split_i = cut // split_ratio
+    split_i = int(np.round(cut * split_ratio))
 
     train_fri = fri_ind[split_i:]
     train_frii = frii_ind[split_i:]
     test_fri = fri_ind[:split_i]
     test_frii = frii_ind[:split_i]
 
-    train = np.concatenate((train_fri, train_frii), axis=0)
-    test = np.concatenate((test_fri, test_frii), axis=0)
+    train_i = np.concatenate((train_fri, train_frii), axis=0)
+    test_i = np.concatenate((test_fri, test_frii), axis=0)
+
+    # Shuffling FRI's and FRII's
+    train_i = shuffle(train_i, random_state=seed)
+    test_i = shuffle(test_i, random_state=seed)
 
     return train_i, test_i
 
