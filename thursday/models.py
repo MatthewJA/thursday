@@ -123,6 +123,7 @@ class SklearnModel:
 
         # Returns:
             predictions: Class predictions for test_x.
+
         """
         predictions = self.predict_proba(test_x)
         predictions = np.around(predictions)

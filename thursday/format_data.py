@@ -210,4 +210,3 @@ def augment_data(rotation_range=180, zoom_range=0.2, shift_range=0.0, flip=True)
                 preprocessing_function=add_noise)
     
     return datagen
-
