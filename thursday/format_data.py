@@ -52,7 +52,7 @@ def get_data(fr_data_path, aniyan_path, seed=0):
                 generator.  
        
     # Returns
-        Locations training and testing data as Boolean arrays with shape 
+        Locations training and testing data with shape 
         [samples,]. There are an equal number of FRIs and FRIIs in each 
         set, with the rest discarded.
     """
@@ -101,34 +101,69 @@ def get_data(fr_data_path, aniyan_path, seed=0):
 
     # Fectching indices
     fri_in_aniyan = np.where(fri_in_aniyan)[0]
-    frii_in_aniyan = np.where(frii_in_aniyan)[0]
+    frii_in_aniyan = np.where(frii_in_aniyan)[0] + np.where(fri_ind)[0].shape[0]
 
     fri_leftover = np.where(fri_leftover)[0]
-    frii_leftover = np.where(frii_leftover)[0]
+    frii_leftover = np.where(frii_leftover)[0] + np.where(fri_ind)[0].shape[0]
 
-    # Finding the number of samples in the smallest fr class
-    # So there are an equal amount of each class in each set
-    aniyan_cut = np.min(np.array([fri_in_aniyan.shape[0], frii_in_aniyan.shape[0]]))
-    leftover_cut = np.min(np.array([fri_leftover.shape[0], frii_leftover.shape[0]]))
-
-    # Shuffling before discarding
-    fri_in_aniyan = shuffle(fri_in_aniyan, random_state=seed)
-    frii_in_aniyan = shuffle(frii_in_aniyan, random_state=seed)
-    fri_leftover = shuffle(fri_leftover, random_state=seed)
-    frii_leftover = shuffle(frii_leftover, random_state=seed)
-
-    # Discarding samples
-    fri_in_aniyan = np.sort(fri_in_aniyan[:aniyan_cut], axis=0)
-    frii_in_aniyan = np.sort(frii_in_aniyan[:aniyan_cut], axis=0)
-    fri_leftover = np.sort(fri_leftover[:leftover_cut], axis=0)
-    frii_leftover = np.sort(frii_leftover[:leftover_cut], axis=0)
-    
+    # Concatenating
     aniyan = np.concatenate((fri_in_aniyan, frii_in_aniyan), axis=0)
     leftover = np.concatenate((fri_leftover, frii_leftover), axis=0)
+
+    # Shuffling FRI's and FRII's
+    aniyan = np.sort(shuffle(aniyan, random_state=seed), axis=0)
+    leftover = np.sort(shuffle(leftover, random_state=seed), axis=0)
 
     # Training and testing sets
     train_i = leftover
     test_i = aniyan
+
+    # Shuffling FRI's and FRII's
+    train_i = shuffle(train_i, random_state=seed)
+    test_i = shuffle(test_i, random_state=seed)
+
+    return train_i, test_i
+
+def get_fr_data(fr_data_path, split_ratio=0.5, seed=0):
+    """Splits FR data into a training and testing set.
+    
+    # Arguments
+        fr_data_path: File path of the base dataset. Must be a h5py file 
+            of the exact format as the one used for this script 
+            (see https://github.com/josh-marsh/thursday)
+        split_ratio: Factor of the data used for testing. The value 
+            is rounded to the nearest indice. Default is 0.5.
+        seed: Seed value to consistently initialize the random number 
+            generator.
+       
+    # Returns
+        Locations training and testing data  with shape [samples,]. 
+        There are an equal number of FRIs and FRIIs in each set, with the
+        rest discarded.
+    """
+    # Loading data
+    with h5py.File(fr_data_path, 'r') as data:
+        labels = data['labels'].value.astype(bool)
+    
+    # Splitting classes
+    fri_i  = np.where(~labels)[0]
+    frii_i = np.where(labels)[0]
+
+    # Slitting into training and testing sets
+    cut = np.round(split_ratio * fri_i.shape[0])
+    train_fri = fri_i[cut:]
+    test_fri = fri_i[:cut]
+
+    cut = np.round(split_ratio * fri_ii.shape[0])
+    train_frii = frii_i[cut:]
+    test_frii = frii_i[:cut]
+
+    train_i = np.concatenate((train_fri, train_frii), axis=0)
+    test_i = np.concatenate((test_fri, test_frii), axis=0)
+
+    # Shuffling FRI's and FRII's
+    train_i = shuffle(train_i, random_state=seed)
+    test_i = shuffle(test_i, random_state=seed)
 
     return train_i, test_i
 
@@ -145,7 +180,7 @@ def add_noise(image):
         image += 10e-10 * np.random.randn(image.shape[0], image.shape[1], 1)
         
         return image
-    
+
 def augment_data(rotation_range=180, zoom_range=0.2, shift_range=0.0, flip=True):
     """ Initializes data generator.
 
