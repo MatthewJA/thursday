@@ -87,7 +87,9 @@ class SklearnModel:
         train_x = np.reshape(train_x, (np.shape(train_x)[0], -1))
 
         try:
-            model = self.Model(random_state=self.seed, **self.kwargs)
+            model = self.Model(random_state=self.seed, class_weight='balanced',
+                                **self.kwargs)
+
         except TypeError:
             model = self.Model(**self.kwargs)
 
@@ -270,6 +272,7 @@ class HOGNet:
 
         self.model = None
         self.history = None
+        self.class_weight = None
 
         self.prewitt_x = None
         self.prewitt_y = None
@@ -527,6 +530,11 @@ class HOGNet:
         # Shuffling
         train_x, train_y = shuffle(train_x, train_y, random_state=self.seed)
            
+        # Setting Class weights
+        self.class_weight = class_weight.compute_class_weight('balanced'
+                                               ,np.unique(train_y)
+                                               ,train_y)
+
         # Constructing class for callbacks
         class LossHistory(keras.callbacks.Callback):
             def on_train_begin(self, logs={}):
@@ -575,7 +583,8 @@ class HOGNet:
                         validation_data=self.datagen.flow(val_x, val_y, 
                         batch_size=self.batch_size, shuffle=True),
                         validation_steps=math.ceil(self.steps_per_epoch / 5), 
-                        callbacks=callback)
+                        callbacks=callback,
+                        class_weight=self.class_weight)
 
             else:
                 callback = [EarlyStopping(monitor='loss', patience=self.patience),
@@ -584,7 +593,8 @@ class HOGNet:
                 self.model.fit_generator(self.datagen.flow(train_x, train_y, 
                         batch_size=self.batch_size, shuffle=True), 
                         steps_per_epoch=self.steps_per_epoch, epochs=self.max_epoch, 
-                        callbacks=callback)
+                        callbacks=callback,
+                        class_weight=self.class_weight)
 
             if self.history is None:
                 self.history = callback[2]
@@ -603,7 +613,7 @@ class HOGNet:
 
                 else:
                     layer.trainable = True
-                i += self.gap
+                i += 1
 
         return self
 
@@ -670,3 +680,4 @@ class HOGNet:
         self.model.load_weights(path)
         
         return self
+

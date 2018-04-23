@@ -106,23 +106,7 @@ def get_data(fr_data_path, aniyan_path, seed=0):
     fri_leftover = np.where(fri_leftover)[0]
     frii_leftover = np.where(frii_leftover)[0] + np.where(fri_ind)[0].shape[0]
 
-    # Finding the number of samples in the smallest fr class
-    # So there are an equal amount of each class in each set
-    aniyan_cut = np.min(np.array([fri_in_aniyan.shape[0], frii_in_aniyan.shape[0]]))
-    leftover_cut = np.min(np.array([fri_leftover.shape[0], frii_leftover.shape[0]]))
-
-    # Shuffling before discarding
-    fri_in_aniyan = shuffle(fri_in_aniyan, random_state=seed)
-    frii_in_aniyan = shuffle(frii_in_aniyan, random_state=seed)
-    fri_leftover = shuffle(fri_leftover, random_state=seed)
-    frii_leftover = shuffle(frii_leftover, random_state=seed)
-
-    # Discarding samples
-    fri_in_aniyan = fri_in_aniyan[:aniyan_cut]
-    frii_in_aniyan = frii_in_aniyan[:aniyan_cut]
-    fri_leftover = fri_leftover[:leftover_cut]
-    frii_leftover = frii_leftover[:leftover_cut]
-
+    # Concatenating
     aniyan = np.concatenate((fri_in_aniyan, frii_in_aniyan), axis=0)
     leftover = np.concatenate((fri_leftover, frii_leftover), axis=0)
 
@@ -162,29 +146,17 @@ def get_fr_data(fr_data_path, split_ratio=0.5, seed=0):
         labels = data['labels'].value.astype(bool)
     
     # Splitting classes
-    fri_ind  = np.where(~labels)[0]
-    frii_ind = np.where(labels)[0]
-
-    # Finding the number of samples in the smallest fr class
-    # So there are an equal amount of each class in each set
-    cut = np.min(np.array([fri_ind.shape[0], frii_ind.shape[0]]))
-    cut = cut - cut % 2    # So there can be an even train/test split
-
-    # Shuffling before discarding
-    fri_ind = shuffle(fri_ind, random_state=seed)
-    frii_ind = shuffle(frii_ind, random_state=seed)
-
-    # Discarding samples
-    fri_ind = np.sort(fri_ind[:cut], axis=0)
-    frii_ind = np.sort(frii_ind[:cut], axis=0)
+    fri_i  = np.where(~labels)[0]
+    frii_i = np.where(labels)[0]
 
     # Slitting into training and testing sets
-    split_i = int(np.round(cut * split_ratio))
+    cut = np.round(split_ratio * fri_i.shape[0])
+    train_fri = fri_i[cut:]
+    test_fri = fri_i[:cut]
 
-    train_fri = fri_ind[split_i:]
-    train_frii = frii_ind[split_i:]
-    test_fri = fri_ind[:split_i]
-    test_frii = frii_ind[:split_i]
+    cut = np.round(split_ratio * fri_ii.shape[0])
+    train_frii = frii_i[cut:]
+    test_frii = frii_i[:cut]
 
     train_i = np.concatenate((train_fri, train_frii), axis=0)
     test_i = np.concatenate((test_fri, test_frii), axis=0)
@@ -238,3 +210,4 @@ def augment_data(rotation_range=180, zoom_range=0.2, shift_range=0.0, flip=True)
                 preprocessing_function=add_noise)
     
     return datagen
+
