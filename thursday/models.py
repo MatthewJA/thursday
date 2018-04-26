@@ -28,12 +28,12 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
+from sklearn.utils.class_weight import compute_class_weight
 from sklearn.utils import shuffle
 import tensorflow as tf
 
 K.set_image_dim_ordering('tf')
 K.set_image_data_format('channels_last')
-
 
 class SklearnModel:
     """Wrapper for sklearn classifiers.
@@ -65,6 +65,8 @@ class SklearnModel:
         self.model = None
         self.path = None
 
+        self.name = Model.__name__
+
     def fit(self, train_x, train_y):
         """Trains sklearn model.
 
@@ -75,6 +77,9 @@ class SklearnModel:
         # Returns:
             self
         """ 
+        # Shuffling
+        train_x, train_y = shuffle(train_x, train_y, random_state=self.seed)
+
         # Augmenting data 
         if self.datagen is not None:
             train_x, train_y = self.augment(train_x, train_y, batch_size=
@@ -89,9 +94,11 @@ class SklearnModel:
         try:
             model = self.Model(random_state=self.seed, class_weight='balanced',
                                 **self.kwargs)
-
         except TypeError:
-            model = self.Model(**self.kwargs)
+            try:
+                model = self.Model(class_weight='balanced', **self.kwargs)
+            except TypeError:
+                model = self.Model(**self.kwargs)
 
         model = model.fit(train_x, train_y)
 
@@ -278,6 +285,8 @@ class HOGNet:
         self.prewitt_x = None
         self.prewitt_y = None
         self.cent = None
+
+        self.name = "HOGNet"
 
         # Setting random number generator seeds for numpy and tensorflow
         np.random.seed(self.seed)
@@ -532,10 +541,9 @@ class HOGNet:
         train_x, train_y = shuffle(train_x, train_y, random_state=self.seed)
            
         # Setting Class weights
-        self.class_weight = class_weight.compute_class_weight('balanced'
+        self.class_weight = compute_class_weight('balanced'
                                                ,np.unique(train_y)
                                                ,train_y)
-
         # Constructing class for callbacks
         class LossHistory(keras.callbacks.Callback):
             def on_train_begin(self, logs={}):
