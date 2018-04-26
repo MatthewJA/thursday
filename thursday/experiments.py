@@ -78,10 +78,12 @@ hognet = HOGNet(datagen=datagen, batch_size=64, steps_per_epoch=50,
 classifiers = [random_forest, naive_bayes, hognet]
 
 for classifier in classifiers:
+    print ("Running " + classifier.name)
+
     classifier = classifier.fit(train_x, train_y)
     predictions = classifier.predict(test_x)
 
-    print ('')
+    print ("Class predictions for testing data")
     print (predictions)
 
     correct = test_y == predictions
@@ -109,9 +111,12 @@ with h5py.File(everything_path, 'r') as data:
 
 
 for classifier in classifiers:
+    print ("Running " + classifier.name)
+
     classifier = classifier.fit(train_x, train_y)
     predictions = classifier.predict(test_x)
 
+    print ("Class predictions for testing data")
     print (predictions)
 
     correct = test_y == predictions
