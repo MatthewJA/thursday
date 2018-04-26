@@ -176,7 +176,7 @@ def add_noise(image):
        keras layer.
        """
       image += 10e-10 * np.random.randn(image.shape[0], image.shape[1], 1)
-      
+      S
       return image
 
 def augment(rotation_range=180, zoom_range=0.2, shift_range=0.0, flip=True):
@@ -348,9 +348,9 @@ def append_random(everything_path, random_path):
       means = np.mean(np.mean(random, axis=-1), axis=-1)
       empty = means == 0.0
       error = np.isnan(means)
-      keep = empty | error
+      discard = empty | error
 
-      random_i = np.where(~keep)
+      random_i = np.where(~discard)
       random = random[random_i]
 
       random = center_on_brightest(random)

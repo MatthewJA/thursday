@@ -22,14 +22,14 @@ print("Experiment 1: Classifing FR-I vs FR-II")
 print("Training on two thirds of class-wise balenced FR Data")
 print("Testing on a third of class-wise balanced FR Data")
 
-data_path = 'data/'
-save_path = 'saved_models/'
+data_path = 'data'
+save_path = 'saved_models'
 
 # Setting Paths
-raw_fr_data_data = data_path + 'data_raw.h5'
-fr_data_path = data_path + 'data.h5'
-random_path = data_path + 'random_1000.h5'
-everything_path = data_path + 'everything.h5'
+raw_fr_data_data = Path.cwd() / data_path / 'data_raw.h5'
+fr_data_path = Path.cwd() / data_path / 'data.h5'
+random_path = Path.cwd() / data_path / 'random_1000.h5'
+everything_path = Path.cwd() / data_path / 'everything.h5'
 
 if not Path(raw_fr_data_data).is_file():
     raise print("Error: " + raw_fr_data_data + " is not a valid path and/or file")
@@ -81,6 +81,7 @@ for classifier in classifiers:
     classifier = classifier.fit(train_x, train_y)
     predictions = classifier.predict(test_x)
 
+    print ('')
     print (predictions)
 
     correct = test_y == predictions

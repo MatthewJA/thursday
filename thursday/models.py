@@ -65,6 +65,8 @@ class SklearnModel:
         self.model = None
         self.path = None
 
+        self.name = Model.__name__
+
     def fit(self, train_x, train_y):
         """Trains sklearn model.
 
@@ -283,6 +285,8 @@ class HOGNet:
         self.prewitt_x = None
         self.prewitt_y = None
         self.cent = None
+
+        self.name = "HOGNet"
 
         # Setting random number generator seeds for numpy and tensorflow
         np.random.seed(self.seed)
