@@ -437,8 +437,8 @@ def generate_labels_fri(train_i, test_i, labels):
    train = labels[train_i]
    test = labels[test_i]
 
-   train_y = np.where(train == 1, True, False)
-   test_y = np.where(test == 1, True, False) 
+   train_y = train == 1
+   test_y = test == 1
 
    return train_y, test_y
 
@@ -461,8 +461,8 @@ def generate_labels_frii(train_i, test_i, labels):
    train = labels[train_i]
    test = labels[test_i]
 
-   train_y = np.where(train == 2, True, False)
-   test_y = np.where(test == 2, True, False) 
+   train_y = train == 2
+   test_y = test == 2
 
    return train_y, test_y
 
