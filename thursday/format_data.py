@@ -124,6 +124,7 @@ def get_aniyan(fr_data_path, aniyan_path, seed=0):
 
    return train_i, test_i
 
+
 def get_fr(fr_data_path, split_ratio=0.5, seed=0):
    """Splits FR data into a training and testing set.
    
@@ -165,6 +166,7 @@ def get_fr(fr_data_path, split_ratio=0.5, seed=0):
 
    return train_i, test_i
 
+
 def add_noise(image):
       """ Adds tiny random Gaussian Noise to each image. 
       
@@ -176,8 +178,9 @@ def add_noise(image):
        keras layer.
        """
       image += 10e-10 * np.random.randn(image.shape[0], image.shape[1], 1)
-      S
+      
       return image
+
 
 def augment(rotation_range=180, zoom_range=0.2, shift_range=0.0, flip=True):
    """ Initializes data generator.
@@ -208,6 +211,7 @@ def augment(rotation_range=180, zoom_range=0.2, shift_range=0.0, flip=True):
             preprocessing_function=add_noise)
    
    return datagen
+
 
 def shift(x, row_ind, col_ind, row_axis=0, col_axis=1, channel_axis=2,
              fill_mode='constant', cval=0.):
@@ -241,6 +245,7 @@ def shift(x, row_ind, col_ind, row_axis=0, col_axis=1, channel_axis=2,
    
    return x
 
+
 def center_on_brightest(x):
    dim = np.asarray(x.shape)
    max_i = np.zeros((dim[0], 2))
@@ -258,6 +263,7 @@ def center_on_brightest(x):
    x = x_shift #[in_range]
    
    return x
+
 
 def initial_resizing(fr_raw_data_path, fr_data_path, dim=300):
    """Resizes raw ouput of fri-frii-download.
@@ -281,6 +287,7 @@ def initial_resizing(fr_raw_data_path, fr_data_path, dim=300):
          f.copy(data['fri_data'], 'fri_data')
          f.copy(data['frii_data'], 'frii_data')
          f.copy(data['labels'], 'labels')
+
 
 def add_random(fr_data_path, random_path, output_path):
    """Dumps random sources and FR sources into a h5py file.
@@ -363,6 +370,7 @@ def append_random(everything_path, random_path):
       data["labels"][-random.shape[0]:] = np.full((random.shape[0],), 
                                  fill_value=0)
 
+
 def get_random(everything_path, split_ratio=0.5, seed=0):
    """Get train and test indices for FR vs random classification.
    
@@ -410,6 +418,7 @@ def get_random(everything_path, split_ratio=0.5, seed=0):
 
    return train_i, test_i
 
+
 def generate_labels_fri(train_i, test_i, labels):
    """Gets train and test labels for FRI vs Random classification.
    
@@ -433,6 +442,7 @@ def generate_labels_fri(train_i, test_i, labels):
 
    return train_y, test_y
 
+
 def generate_labels_frii(train_i, test_i, labels):
    """Gets train and test labels for FRII vs Random classification.
    
@@ -455,3 +465,4 @@ def generate_labels_frii(train_i, test_i, labels):
    test_y = np.where(test == 2, True, False) 
 
    return train_y, test_y
+
