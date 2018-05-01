@@ -1,10 +1,11 @@
-import h5py
+import io
 import requests
 import urllib
 
 from astropy.coordinates import SkyCoord
 from astroquery.vizier import Vizier
 import astropy.units as u
+import h5py
 import numpy as np
 import pandas
 import skimage.transform
@@ -13,6 +14,7 @@ import ask_first
 from second.first_download import download_first
 from second import get_data
 
+Vizier.ROW_LIMIT = -1
 
 def create_labels(astropy_table, raw_labels):
    """Create labels from astopy table..
@@ -62,14 +64,14 @@ def download_fr_components(output_path: str):
    fri_labels = np.full(len(fricat), 1)
    frii_labels = np.full(len(friicat), 2)
 
-   labels = np.concatenate((fri_labels, frii_labels), axis=0)
+   source_labels = np.concatenate((fri_labels, frii_labels), axis=0)
       
-   # Coverting coordinate of varying formats to SkyCoords
-   fri_coord = SkyCoord(ra=fricat['ra'], 
-                        dec=fricat['dec'], 
-                        unit=('hourangle', 'deg'))
-   frii_coord = SkyCoord(ra=fricat['_RA'], 
-                        dec=fricat['_DE'], 
+   # Coverting coordinate of varying formats to SkyCoords 
+   fri_coord = SkyCoord(fricat['ra'], 
+                        fricat['dec'],
+                        unit=('hour', 'deg'))
+   frii_coord = SkyCoord(friicat['_RA'], 
+                        friicat['_DE'],
                         unit=('deg', 'deg'))
 
    while True:
@@ -100,11 +102,12 @@ def download_fr_components(output_path: str):
                     unit=('hourangle', 'deg'))
          
    # Creating labels
-   fri_labels = create_labels(fri_table)
-   frii_labels = create_labels(frii_table)
+   fri_labels = create_labels(fri_table, source_labels)
+   frii_labels = create_labels(frii_table, source_labels)
+   labels = np.concatenaten((fri_labels, frii_labels), axis=0)
 
-   fri_images = np.zeros((fri_c.shape[0], 333, 333))
-   frii_images = np.zeros((frii_c.shape[0], 333, 333))
+   fri_images = np.zeros((fri_c.shape[0], 300, 300))
+   frii_images = np.zeros((frii_c.shape[0], 300, 300))
 
 
    for i in range(fri_c.shape[0]):
@@ -118,7 +121,7 @@ def download_fr_components(output_path: str):
 
       print ("Downloaded " + str(i) + "/" + str(fri_c.shape[0]) + " FRI")
 
-      fri_images[i, :, :] = image[0].data
+      fri_images[i, :, :] = im
 
       
    for i in range(frii_c.shape[0]):
@@ -134,7 +137,7 @@ def download_fr_components(output_path: str):
 
       frii_images[i, :, :] = im
 
-   images = np.vstack((fri_images. frii_images))
+   images = np.vstack((fri_images, frii_images))
 
    with h5py.File(first_data_path, 'r+') as f:
       f.create_dataset('images', data=images)
@@ -174,15 +177,14 @@ def download_random(output_path: str, n=1000):
       im = get_data.first(coord, size=10)
       im = im[0].data
 
-      if im.shape[0] == 0 or im.shape[1] == 0:
-          continue
-
       im -= im.min()
       im /= im.max()
       im = skimage.transform.resize(im, (300, 300))
 
-      images[i, :, :] = im
       print ("Downloaded " + str(i) + "/" + str(n) + " Random Images")
+
+      images[i, :, :] = im
+      
 
    with h5py.File(output_path, 'r+') as f:
       f.create_dataset('images', data=images)

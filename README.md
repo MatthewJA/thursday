@@ -29,7 +29,7 @@ To conduct all experiments, run experiments.py [`experiments.py`](thursday/exper
 8. Optional: Load model from disk with the `load` method.
 9. Use `predict` method to predict class labels and `predict_proba` class probabilities for unseen samples (`test_x`). Use `score` to evaluate the balanced accuracy of you model. 
 
-![flow](Basic/files/flowchart.jpg)
+![flow](Basic/files/flow_chart.jpg)
 
 ## Example
 

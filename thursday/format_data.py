@@ -335,7 +335,7 @@ def initial_resizing(fr_raw_data_path, fr_data_path, dim=300):
          f.copy(data['labels'], 'labels')
 
 
-def format(fr_data_path, random_path, output_path):
+def join_fr_random(fr_data_path, random_path, output_path):
    """Dumps random sources and FR sources into a h5py file.
    
    Empty images and images with nans are removed from inputed 

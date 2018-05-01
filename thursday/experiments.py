@@ -5,14 +5,13 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.naive_bayes import GaussianNB
 
-from format_data import add_random
 from format_data import append_random
 from format_data import augment
 from format_data import generate_labels_fri
 from format_data import generate_labels_frii
 from format_data import get_aniyan
 from format_data import get_fr
-from format_data import get_random
+from format_data import join_fr_random
 from format_data import resize_array
 from models import HOGNet
 from models import SklearnModel
@@ -27,18 +26,17 @@ data_path = 'data'
 save_path = 'saved_models'
 
 # Setting Paths
-fr_data_path = Path.cwd() / data_path / 'data.h5'
+fr_data_path = Path.cwd() / data_path / 'fr.h5'
 random_path = Path.cwd() / data_path / 'random.h5'
 everything_path = Path.cwd() / data_path / 'everything.h5'
 
 if not Path(fr_data_path).is_file():
     download_fr_components(fr_data_path)
-
 if not Path(random_path).is_file():
     download_random(random_path)
 
 if not Path(everything_path).is_file():
-    add_random(fr_data_path, random_path, everything_path)
+    join_fr_random(fr_data_path, random_path, everything_path)
 
 # Setting Seed
 seed = 0
