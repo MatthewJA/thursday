@@ -109,7 +109,6 @@ def download_fr_components(output_path: str):
    fri_images = np.zeros((fri_c.shape[0], 300, 300))
    frii_images = np.zeros((frii_c.shape[0], 300, 300))
 
-
    for i in range(fri_c.shape[0]):
       coord = fri_c[i]
 
@@ -179,12 +178,17 @@ def download_random(output_path: str, n, seed):
    selection = indices[:n]
 
    selected = table.iloc[selection]
+   selected['RAJ2000'] = selected['RAJ2000'].str.decode("utf-8") 
+   selected['DEJ2000'] = selected['DEJ2000'].str.decode("utf-8")
 
    images = np.zeros((n, 300, 300))
 
+   print (len(selected['RAJ2000']), selected['RAJ2000'])
+   print (len(selected['DEJ2000']), selected['DEJ2000'])
+
    coords = SkyCoord(ra=selected['RAJ2000'], 
-                    dec=selected['DEJ2000'], 
-                    unit=('hourangle', 'deg'))
+                     dec=row['DEJ2000'], 
+                     unit=('hourangle', 'deg'))
       
    print ("Downloading Random Images")
    for i in range(n):
