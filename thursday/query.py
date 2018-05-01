@@ -112,7 +112,13 @@ def download_fr_components(output_path: str):
 
    for i in range(fri_c.shape[0]):
       coord = fri_c[i]
+
       im = get_data.first(coord, size=10)
+          
+      if im.data.shape[0] == 0 or im.data.shape[1] == 0 or im is None:
+         print (str(i) + " Bad Image")
+         continue
+
       im = im[0].data
 
       im -= im.min()
@@ -126,7 +132,13 @@ def download_fr_components(output_path: str):
       
    for i in range(frii_c.shape[0]):
       coord = frii_c[i]
+
       im = get_data.first(coord, size=10)
+      
+      if im[0].data.shape[0]==0 or im[0].data.shape[1]==0 or im is None:
+         print (str(i) + " Bad Image")
+         continue
+
       im = im[0].data
 
       im -= im.min()
@@ -150,13 +162,15 @@ def download_fr_components(output_path: str):
                               frii_c.dec.deg))
 
 
-def download_random(output_path: str, n=1000):
+def download_random(output_path: str, n, seed):
    """Download random radio cutouts from FIRST.
    
    # Arguments
       output_path: File path to save h5py file
    """
    Vizier.ROW_LIMIT = -1
+   np.random.seed(seed)
+
    catalog = Vizier.get_catalogs(catalog='VIII/92')[0]
    table = catalog.to_pandas()
 
@@ -165,16 +179,27 @@ def download_random(output_path: str, n=1000):
    selection = indices[:n]
 
    selected = table.iloc[selection]
-   images = numpy.zeros((n, 300, 300))
+
+   images = np.zeros((n, 300, 300))
 
    coords = SkyCoord(ra=selected['RAJ2000'], 
                     dec=selected['DEJ2000'], 
                     unit=('hourangle', 'deg'))
       
    print ("Downloading Random Images")
-   for i in range(coords.shape[0]):
+   for i in range(n):
       coord = coords[i]
+      
       im = get_data.first(coord, size=10)
+
+      if im is None:
+         print (str(i) + " Bad Image")
+         continue
+
+      elif im[0].data.shape[0]==0 or im[0].data.shape[1]==0:
+         print (str(i) + " Bad Image")
+         continue
+            
       im = im[0].data
 
       im -= im.min()

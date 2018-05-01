@@ -18,28 +18,29 @@ from models import SklearnModel
 from query import download_fr_components
 from query import download_random
 
-print("Experiment 1: Classifing FR-I vs FR-II")
-print("Training on two thirds of class-wise balenced FR Data")
-print("Testing on a third of class-wise balanced FR Data")
-
 data_path = 'data'
 save_path = 'saved_models'
 
+# Setting Seed
+seed = 0
+
 # Setting Paths
-fr_data_path = Path.cwd() / data_path / 'fr.h5'
+fr_data_path = Path.cwd() / data_path / 'data.h5'
 random_path = Path.cwd() / data_path / 'random.h5'
 everything_path = Path.cwd() / data_path / 'everything.h5'
 
 if not Path(fr_data_path).is_file():
     download_fr_components(fr_data_path)
+
 if not Path(random_path).is_file():
-    download_random(random_path)
+    download_random(random_path, n=1000, seed=seed)
 
 if not Path(everything_path).is_file():
     join_fr_random(fr_data_path, random_path, everything_path)
 
-# Setting Seed
-seed = 0
+print("Experiment 1: Classifing FR-I vs FR-II")
+print("Training on two thirds of class-wise balenced FR Data")
+print("Testing on a third of class-wise balanced FR Data")
 
 # Setting Data Generator
 datagen = augment(rotation_range=180, zoom_range=0.2, 
@@ -117,23 +118,20 @@ with h5py.File(everything_path, 'r') as data:
 
 # Reinstantiating Classifiers
 random_forest = SklearnModel(RandomForestClassifier, 
-                                        datagen=datagen, 
-                                        nb_augment=10, 
-                                        seed=seed)
-
+                                       datagen=datagen, 
+                                       nb_augment=10, 
+                                       seed=seed)
 naive_bayes = SklearnModel(GaussianNB, datagen=datagen, 
                                        nb_augment=5, 
                                        seed=seed)
-hognet = HOGNet(datagen=datagen, 
-                batch_size=64, 
-                steps_per_epoch=5, 
-                max_epoch=1, 
-                patience=5, 
-                gap=2, 
-                seed=seed)
+hognet = HOGNet(datagen=datagen, batch_size=64, 
+                                 steps_per_epoch=5, 
+                                 max_epoch=1, 
+                                 patience=5, 
+                                 gap=2, 
+                                 seed=seed)
 
 classifiers = [random_forest, naive_bayes, hognet]
-
 
 for classifier in classifiers:
     print ("Running " + classifier.name)
