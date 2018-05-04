@@ -68,13 +68,14 @@ def get_aniyan(fr_data_path, aniyan_path, seed=0):
       
       fri_data = data['fri_data']
       frii_data = data['frii_data']
-      
+
+   try:
       # Converting coordinates into a Astropy Skycoord
       fri_ra = fri_data['ra'].value.astype(str)
       fri_de = fri_data['dec'].value.astype(str)
       fri_ra = fri_ra.reshape((-1, 1))
       fri_de = fri_de.reshape((-1, 1))
-
+   
       frii_ra = frii_data['_RA'].value.astype(str)
       frii_de = frii_data['_DE'].value.astype(str)
       frii_ra = frii_ra.reshape((-1, 1))
@@ -82,26 +83,34 @@ def get_aniyan(fr_data_path, aniyan_path, seed=0):
       
       fri_c = np.hstack((fri_ra, fri_de))
       frii_c = np.hstack((frii_ra, frii_de))
+      
+      coord_fri = SkyCoord(ra=fri_c[:, 0], 
+                          dec=fri_c[:, 1], 
+                           unit=('hourangle', 'deg'))
+      coord_frii = SkyCoord(ra=frii_c[:, 0], 
+                           dec=frii_c[:, 1], 
+                           unit=('deg', 'deg'))
+   except:
+      coord_fri = SkyCoord(ra=fri_data[:, 0], 
+                          dec=fri_data[:, 1], 
+                           unit=('hourangle', 'deg'))
+      coord_frii = SkyCoord(ra=frii_data[:, 0], 
+                           dec=frii_data[:, 1], 
+                           unit=('deg', 'deg'))
 
    # Opening Catalogues
    aniyan = asc.read(aniyan_path).to_pandas()
-   
-   # FRI ind
-   fri_ind = np.where(labels==1)
-   
+
    # Coverting coordinates of varying formats to SkyCoords
    aniyan_ra = aniyan.iloc[2:]['RAJ2000']
    aniyan_dec = aniyan.iloc[2:]['DEJ2000']
    
    coord_aniyan = SkyCoord(ra=aniyan_ra, 
-                           dec=aniyan_dec, 
-                           unit=('hourangle', 'deg'))
-   coord_fri = SkyCoord(ra=fri_c[:, 0], 
-                        dec=fri_c[:, 1], 
-                        unit=('hourangle', 'deg'))
-   coord_frii = SkyCoord(ra=frii_c[:, 0], 
-                         dec=frii_c[:, 1], 
-                         unit=('deg', 'deg'))
+                          dec=aniyan_dec, 
+                         unit=('hourangle', 'deg'))
+
+   # FRI ind
+   fri_ind = np.where(labels==1)
    
    # Finding nearest FRI's and FRIIs to each object in aniyan
    i_, sep_i, _i = coord_fri.match_to_catalog_sky(coord_aniyan)
@@ -120,11 +129,9 @@ def get_aniyan(fr_data_path, aniyan_path, seed=0):
    fri_in_aniyan = np.where(fri_in_aniyan)[0]
    frii_in_aniyan = np.where(frii_in_aniyan)[0] + nb_fri
                                 
-
    fri_leftover = np.where(fri_leftover)[0]
    frii_leftover = np.where(frii_leftover)[0] + nb_fri
                              
-
    # Concatenating
    aniyan = np.concatenate((fri_in_aniyan, 
                             frii_in_aniyan), 
@@ -133,19 +140,9 @@ def get_aniyan(fr_data_path, aniyan_path, seed=0):
                               frii_leftover), 
                               axis=0)
 
-   # Shuffling FRI's and FRII's
-   aniyan = np.sort(shuffle(aniyan, random_state=seed), 
-                                    axis=0)
-   leftover = np.sort(shuffle(leftover, random_state=seed), 
-                                        axis=0)
-
    # Training and testing sets
    train_i = leftover
    test_i = aniyan
-
-   # Shuffling FRI's and FRII's 
-   train_i = shuffle(train_i, random_state=seed)
-   test_i = shuffle(test_i, random_state=seed)
 
    return train_i, test_i
 
@@ -188,10 +185,6 @@ def get_fr(fr_data_path, split_ratio=0.5, seed=0):
    train_i = np.concatenate((train_fri, train_frii), axis=0)
    test_i = np.concatenate((test_fri, test_frii), axis=0)
 
-   # Shuffling FRI's and FRII's
-   train_i = shuffle(train_i, random_state=seed)
-   test_i = shuffle(test_i, random_state=seed)
-
    return train_i, test_i
 
 
@@ -206,8 +199,9 @@ def add_noise(image):
       the arctan2 function in our custom keras layer.
       """
       im = image
-      im += 10e-10 * np.random.randn(im.shape[0], im.shape[1], 1)
-      
+      im += np.absolute(10e-10 * np.random.randn(im.shape[0], 
+                                     im.shape[1], 
+                                     1))
       return im
 
 
@@ -281,7 +275,7 @@ def shift(x, row_ind, col_ind, row_axis=0, col_axis=1,
    x = apply_transform(x, transform_matrix, channel_axis, 
                                             fill_mode, 
                                             cval)
-   
+
    return x
 
 
@@ -307,32 +301,6 @@ def center_on_brightest(x):
    x = x_shift #[in_range]
    
    return x
-
-
-def initial_resizing(fr_raw_data_path, fr_data_path, dim=300):
-   """Resizes raw ouput of fri-frii-download.
-   
-   Takes ouput h5py file of fri-frii-download.ipynb and 
-   returns a h5py file with the exact same format, but 
-   with resized images.
-   
-   # Arguments
-      fr_raw_data_path: File path of output of 
-         fri-frii-download.ipynbs
-      fr_data_path: File path of output file
-   """
-   with h5py.File(fr_raw_data_path, 'r') as data:
-     images = np.asarray(data['images'].value)
-     images = resize_array(images, dim=dim)
-     labels = data['labels'].value
-     
-   with h5py.File(fr_data_path, 'w') as f:
-      f.create_dataset('images', data=images)
-
-      with h5py.File(fr_raw_data_path, 'r') as data: 
-         f.copy(data['fri_data'], 'fri_data')
-         f.copy(data['frii_data'], 'frii_data')
-         f.copy(data['labels'], 'labels')
 
 
 def join_fr_random(fr_data_path, random_path, output_path):
@@ -365,8 +333,30 @@ def join_fr_random(fr_data_path, random_path, output_path):
     
    with h5py.File(fr_data_path, 'r') as data:
       images = np.asarray(data["images"].value) 
-      
-      labels = np.where(np.asarray(data['labels']), 2, 1)
+      labels = np.asarray(data['labels'].value)
+
+      means = np.mean(np.mean(images, axis=-1), axis=-1)
+      empty = means == 0.0
+      error = np.isnan(means)
+      discard = empty | error
+
+      images_i = np.where(~discard)
+      images = images[images_i]
+      labels = labels[images_i]
+
+   if labels.dtype is np.dtype(bool):
+      labels = np.where(labels, 2, 1)
+
+   elif labels.dtype is np.dtype(float):
+      labels = labels.astype(int)
+
+   elif labels.dtype is np.dtype(int):
+      pass
+
+   else:
+      raise ValueError( "Labels are of unknown format")
+   
+   
 
    images = np.concatenate((images, random), axis=0)
    labels = np.concatenate((labels, 

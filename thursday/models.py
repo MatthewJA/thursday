@@ -93,15 +93,15 @@ class SklearnModel:
             train_x, train_y = self.augment(
                                     train_x, 
                                     train_y, 
-                                    batch_size=train_x.shape[0], 
+                                    batch_size=32, 
                                     nb_augment=self.nb_augment)
 
         # Shuffling
         train_x, train_y = shuffle(train_x, train_y, 
-                                random_state=self.seed)
+                                   random_state=self.seed)
 
         # Flattening images
-        train_x = np.reshape(train_x, (np.shape(train_x)[0], -1))
+        train_x = train_x.reshape((np.shape(train_x)[0], -1))
         try:
             model = self.Model(random_state=self.seed, 
                                 class_weight='balanced',
@@ -147,10 +147,14 @@ class SklearnModel:
             predictions: Class predictions for test_x.
 
         """
-        predictions = self.predict_proba(test_x)
-        predictions = np.around(predictions).astype('bool')
+        pred = self.predict_proba(test_x)
 
-        return predictions      
+        if pred.shape[1] == 2:
+            pred = pred.max(axis=1)
+
+        pred = np.around(pred).astype('bool')
+
+        return pred      
 
     def score(self, test_x, test_y):
 
@@ -163,9 +167,10 @@ class SklearnModel:
         # Returns:
             Balanced accuracy.
         """
-        predictions = self.predict(test_x)
+        pred = self.predict(test_x)
 
-        cm = sklearn.metrics.confusion_matrix(test_y, predictions)
+        
+        cm = sklearn.metrics.confusion_matrix(test_y, pred)
         cm = cm.astype(float)
 
         tp = cm[1, 1]
@@ -279,7 +284,7 @@ class SklearnModel:
                     x[cut_start:cut_stop, :, :, :] = X_batch
                     y[cut_start:cut_stop] = Y_batch
                     
-                elif batch == samples // b:
+                elif batch == int(samples / b):
                     break
 
                 else:
@@ -310,11 +315,10 @@ class HOGNet:
     def __init__(self, datagen=None, batch_size=32, 
                                      steps_per_epoch=50, 
                                      max_epoch=100, 
-                                     patience=5, gap=2, 
+                                     patience=5, 
+                                     gap=2, 
                                      seed=None):
         """Attributes:
-            name: name of the file at which the model is 
-                saved. No file extension.
             datagen: The output of the data_gen function 
                 to apply random augmentations to our data 
                 in real time (a keras.preprocessing.image.
@@ -329,7 +333,7 @@ class HOGNet:
                 when the loss stops decreasing.
             patience: number of epochs with no improvement 
                 after which training will be stopped.
-            gap: Number of layers that have thier weights 
+            gap: Number of layers that have their weights 
                 unfrozen per training cycle.
             seed: Seed value to consistently initialize the 
                 random number generator.
@@ -376,15 +380,15 @@ class HOGNet:
         prewitt_x = np.array([[-1, 0, 1], 
                               [-1, 0, 1], 
                               [-1, 0, 1]])
-        prewitt_y = np.array([[-1, -1, -1], 
-                               [0, 0, 0], 
-                               [1, 1, 1]])
+        prewitt_y = np.array([[-1,-1,-1], 
+                              [ 0, 0, 0], 
+                              [ 1, 1, 1]])
         
         # Reshaping Prewitt opperators to required shape
-        self.prewitt_x = prewitt_x.reshape((1, 3, 3, 1, 1))
-        self.prewitt_y = prewitt_y.reshape((1, 3, 3, 1, 1))
-        self.prewitt_x = self.prewitt_x.astype('float64')
-        self.prewitt_y = self.prewitt_y.astype('float64') 
+        prewitt_x = prewitt_x.reshape((1, 3, 3, 1, 1))
+        prewitt_y = prewitt_y.reshape((1, 3, 3, 1, 1))
+        self.prewitt_x = prewitt_x.astype('float64')
+        self.prewitt_y = prewitt_y.astype('float64') 
         # Adding tiny gaussian noise
         self.prewitt_x += 0.01 * np.random.randn(1, 3, 3, 1, 1)
         self.prewitt_y += 0.01 * np.random.randn(1, 3, 3, 1, 1)
@@ -494,8 +498,8 @@ class HOGNet:
                                     hog_norms, 
                                     axis=-1) + c),
                                     axis=-1)
-            hog_norms = tf.div(hog_norms, divisor)
-            return hog_norms
+            hog_norm = tf.div(hog_norms, divisor)
+            return hog_norm
 
         # Building Model 
         inputs = Input(shape=(256, 256, 1))
@@ -513,7 +517,8 @@ class HOGNet:
                                   trainable=True, 
                                   use_bias=False)(inputs)
 
-        # Stacking you cannot multiple layer (i.e mags and angles)
+        # Stacking: Can't have multiple inputs into a single layer 
+        # i.e mags and angles
         conv_stacked = Concatenate(axis=-1)(
                                   [x_conv, y_conv])
 
@@ -562,11 +567,12 @@ class HOGNet:
         # Two h or w consecutive blocks overlap by two cells,
         # i.e block strides. 
         # As a consequence, each internal cell is covered by four blocks 
-        # (if bin_dim=2).
+        # if bin_dim=2
         block1_layer = Lambda(block1, trainable=True)(cells)
         block2_layer = Lambda(block2, trainable=True)(cells)
         block3_layer = Lambda(block3, trainable=True)(cells)
         block4_layer = Lambda(block4, trainable=True)(cells)
+
         block_layer = Concatenate(axis=-1)([block1_layer, 
                                             block2_layer, 
                                             block3_layer, 
@@ -594,7 +600,7 @@ class HOGNet:
         x = Activation('relu')(x)
         x = MaxPooling2D((2, 2), strides=(2, 2))(x)
 
-        # Dense
+        # Dense Block
         x = Flatten()(x) 
         x = Dense(50, activation='relu')(x) 
         x = Dropout(0.2)(x) 
@@ -602,6 +608,7 @@ class HOGNet:
         x = Dropout(0.2)(x) 
         x = Dense(50, activation='relu')(x) 
         x = Dropout(0.2)(x) 
+
         output = Dense(1, activation = "sigmoid")(x) 
 
         # Building Model
@@ -683,7 +690,7 @@ class HOGNet:
                     self.val_loss.append(logs.get('val_loss'))
                     self.val_acc.append(logs.get('val_acc'))        
         
-        """
+
         # Freazing Layers 20 to 27 (the Conv2D blocks)
         start = 20
         stop = 28
@@ -697,63 +704,63 @@ class HOGNet:
             else:
                 layer.trainable = False
             i = i+1
-        """
+        
         # Compiling Model
         self.model.compile(optimizer='adam', 
                            loss='binary_crossentropy', 
                            metrics=["accuracy"])
 
-        #for layer_block in range(start, stop, self.gap):
-        if validation is True:
-            callback = [EarlyStopping(
-                            monitor='val_loss', 
-                            patience=self.patience),
-                        ReduceLROnPlateau(
-                            monitor='val_loss', 
-                            patience=5, 
-                            verbose=1),
-                        History()]
-            
-            self.model.fit_generator(
-                    self.datagen.flow(train_x, train_y, 
-                        batch_size=self.batch_size, 
-                        shuffle=True), 
-                    steps_per_epoch=self.steps_per_epoch, 
-                    epochs=self.max_epoch,
-                    validation_data=self.datagen.flow(val_x, val_y, 
-                        batch_size=self.batch_size, 
-                        shuffle=True),
-                    validation_steps=math.ceil(self.steps_per_epoch / 5), 
-                    callbacks=callback,
-                    class_weight=self.class_weight)
-
-        else:
-            callback = [EarlyStopping(
-                            monitor='loss', 
-                            patience=self.patience),
-                        ReduceLROnPlateau(
-                            monitor='loss', 
-                            patience=5, 
-                            verbose=1),
-                        History()]
-            self.model.fit_generator(
-                    self.datagen.flow(train_x, train_y, 
-                        batch_size=self.batch_size, 
-                        shuffle=True), 
-                    steps_per_epoch=self.steps_per_epoch, 
-                    epochs=self.max_epoch, 
-                    callbacks=callback,
-                    class_weight=self.class_weight)
-
-        if self.history is None:
-            self.history = callback[2].history
-
-        else:
-            for metric in callback[2].history:
-                sub_metric = callback[2].history[metric]
-                self.history[metric].append(sub_metric)
-
-            """
+        for layer_block in range(start, stop-self.gap, self.gap):
+            if validation is True:
+                callback = [EarlyStopping(
+                                monitor='val_loss', 
+                                patience=self.patience),
+                            ReduceLROnPlateau(
+                                monitor='val_loss', 
+                                patience=5, 
+                                verbose=1),
+                            History()]
+                
+                self.model.fit_generator(
+                        self.datagen.flow(train_x, train_y, 
+                            batch_size=self.batch_size, 
+                            shuffle=True), 
+                        steps_per_epoch=self.steps_per_epoch, 
+                        epochs=self.max_epoch,
+                        validation_data=self.datagen.flow(val_x, val_y, 
+                            batch_size=self.batch_size, 
+                            shuffle=True),
+                        validation_steps=math.ceil(self.steps_per_epoch / 5), 
+                        callbacks=callback,
+                        class_weight=self.class_weight)
+    
+            else:
+                callback = [EarlyStopping(
+                                monitor='loss', 
+                                patience=self.patience),
+                            ReduceLROnPlateau(
+                                monitor='loss', 
+                                patience=5, 
+                                verbose=1),
+                            History()]
+                self.model.fit_generator(
+                        self.datagen.flow(train_x, train_y, 
+                            batch_size=self.batch_size, 
+                            shuffle=True), 
+                        steps_per_epoch=self.steps_per_epoch, 
+                        epochs=self.max_epoch, 
+                        callbacks=callback,
+                        class_weight=self.class_weight)
+    
+            if self.history is None:
+                self.history = callback[2].history
+    
+            else:
+                for metric in callback[2].history:
+                    sub_metric = callback[2].history[metric]
+                    self.history[metric].append(sub_metric)
+    
+                
             i = 0
             for layer in self.model.layers:
                 if i < layer_block:
@@ -765,7 +772,7 @@ class HOGNet:
                 else:
                     layer.trainable = True
                 i += 1
-            """
+                
         return self
 
     def predict_proba(self, test_x):
@@ -814,7 +821,7 @@ class HOGNet:
             Balanced accuracy.
         """
         predictions = self.predict(test_x)
-
+        
         cm = sklearn.metrics.confusion_matrix(test_y, predictions)
         cm = cm.astype(float)
 
@@ -827,7 +834,7 @@ class HOGNet:
         ba = (tp / p + tn / n) / 2
         
         return ba
-
+        
     def save(self, path=None):
         """Serialize model weights to HDF5.
 

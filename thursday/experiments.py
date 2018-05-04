@@ -25,9 +25,9 @@ save_path = 'saved_models'
 seed = 0
 
 # Setting Paths
-fr_data_path = Path.cwd() / data_path / 'data.h5'
+fr_data_path = Path.cwd() / data_path / 'fr.h5'
 random_path = Path.cwd() / data_path / 'random.h5'
-everything_path = Path.cwd() / data_path / 'everything.h5'
+everything_path = Path.cwd() / data_path / 'all.h5'
 
 if not Path(fr_data_path).is_file():
     download_fr_components(fr_data_path)
@@ -141,3 +141,5 @@ for classifier in classifiers:
 
     print ("Model score for testing data")
     print (score)
+
+    classifier.save()
