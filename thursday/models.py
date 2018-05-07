@@ -402,7 +402,7 @@ class HOGNet:
 
         # Generating weights for histogram construction
         cent = np.vstack((np.sin(centers), np.cos(centers)))
-        cent = self.cent.reshape((1, 1, 1, 2, bins))
+        cent = cent.reshape((1, 1, 1, 2, bins))
 
         # Generating Filters for the block Operations
         def create_block_filters(block_dim):
@@ -699,8 +699,8 @@ class HOGNet:
         
 
         # Freazing Layers 20 to 27 (the Conv2D blocks)
-        start = 20
-        stop = 28
+        start = 19
+        stop = 30
 
         i = 0
         for layer in self.model.layers:
