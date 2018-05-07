@@ -535,3 +535,4 @@ def generate_labels_frii(train_i, test_i, labels):
    test_y = test == 2
 
    return train_y, test_y
+

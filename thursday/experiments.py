@@ -11,6 +11,7 @@ from format_data import generate_labels_fri
 from format_data import generate_labels_frii
 from format_data import get_aniyan
 from format_data import get_fr
+from format_data import get_random
 from format_data import join_fr_random
 from format_data import resize_array
 from models import HOGNet
@@ -19,14 +20,14 @@ from query import download_fr_components
 from query import download_random
 
 data_path = 'data'
-save_path = 'saved_models'
+save_path = 'saved'
 
 # Setting Seed
 seed = 0
 
 # Setting Paths
 fr_data_path = Path.cwd() / data_path / 'fr.h5'
-random_path = Path.cwd() / data_path / 'random.h5'
+random_path = Path.cwd() / data_path / 'random_1000.h5'
 everything_path = Path.cwd() / data_path / 'all.h5'
 
 if not Path(fr_data_path).is_file():
@@ -89,10 +90,12 @@ for classifier in classifiers:
     print ("Running " + classifier.name)
 
     classifier = classifier.fit(train_x, train_y)
-    score = classifier.score(test_x, test_y)
 
-    print ("Model score for testing data")
-    print (score)
+    score = classifier.score(test_x, test_y)
+    print (classifier.name + " Balanced Accuracy: " + str(score))
+
+    classifier.save(path=save_path, to_dir=True)
+
 
 print("Experiment 2: Classifing FR-I vs Random Sources")
 
@@ -125,8 +128,8 @@ naive_bayes = SklearnModel(GaussianNB, datagen=datagen,
                                        nb_augment=5, 
                                        seed=seed)
 hognet = HOGNet(datagen=datagen, batch_size=64, 
-                                 steps_per_epoch=5, 
-                                 max_epoch=1, 
+                                 steps_per_epoch=50, 
+                                 max_epoch=5, 
                                  patience=5, 
                                  gap=2, 
                                  seed=seed)
@@ -137,9 +140,9 @@ for classifier in classifiers:
     print ("Running " + classifier.name)
 
     classifier = classifier.fit(train_x, train_y)
+    
     score = classifier.score(test_x, test_y)
+    print (classifier.name + " Balanced Accuracy: " + str(score))
 
-    print ("Model score for testing data")
-    print (score)
+    classifier.save(path=save_path, to_dir=True)
 
-    classifier.save()

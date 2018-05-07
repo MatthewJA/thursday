@@ -33,5 +33,5 @@ To conduct all experiments, run experiments.py [`experiments.py`](thursday/exper
 
 ## Example
 
-A working example can be found at [`example_usage.ipynb`](thursday/example_usage.ipynb). 
+A working example can be found at [`example_usage.ipynb`](thursday/example_usage.ipynb). (Note: Not up to date)
 

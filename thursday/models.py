@@ -2,6 +2,7 @@
 
 import math
 import pickle
+from time import gmtime, strftime
 
 import keras 
 from keras import backend as K
@@ -26,6 +27,7 @@ from keras.models import Model
 from keras.models import model_from_json
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 import sklearn.metrics
@@ -169,7 +171,6 @@ class SklearnModel:
         """
         pred = self.predict(test_x)
 
-        
         cm = sklearn.metrics.confusion_matrix(test_y, pred)
         cm = cm.astype(float)
 
@@ -183,7 +184,7 @@ class SklearnModel:
         
         return ba  
 
-    def save(self, path=None):
+    def save(self, path=None, to_dir=False):
         """Saves model as pickle file.
         # Arguments:
             path: File path to save the model. Must be a 
@@ -194,7 +195,13 @@ class SklearnModel:
         """
 
         if path is None:
-            path = self.name + '.pk'
+            path = self.name + "_" + strftime(
+                    "%m_%d_%H_%M_%S", gmtime()) + '.pk'
+
+        elif to_dir:
+            name = self.name + "_" + strftime(
+                    "%m_%d_%H_%M_%S", gmtime()) + '.pk'
+            path = Path(path) / Path(name)
 
         self.path = path
         
@@ -387,15 +394,15 @@ class HOGNet:
         # Reshaping Prewitt opperators to required shape
         prewitt_x = prewitt_x.reshape((1, 3, 3, 1, 1))
         prewitt_y = prewitt_y.reshape((1, 3, 3, 1, 1))
-        self.prewitt_x = prewitt_x.astype('float64')
-        self.prewitt_y = prewitt_y.astype('float64') 
+        prewitt_x = prewitt_x.astype('float64')
+        prewitt_y = prewitt_y.astype('float64') 
         # Adding tiny gaussian noise
-        self.prewitt_x += 0.01 * np.random.randn(1, 3, 3, 1, 1)
-        self.prewitt_y += 0.01 * np.random.randn(1, 3, 3, 1, 1)
+        prewitt_x += 0.01 * np.random.randn(1, 3, 3, 1, 1)
+        prewitt_y += 0.01 * np.random.randn(1, 3, 3, 1, 1)
 
         # Generating weights for histogram construction
-        self.cent = np.vstack((np.sin(centers), np.cos(centers)))
-        self.cent = self.cent.reshape((1, 1, 1, 2, bins))
+        cent = np.vstack((np.sin(centers), np.cos(centers)))
+        cent = self.cent.reshape((1, 1, 1, 2, bins))
 
         # Generating Filters for the block Operations
         def create_block_filters(block_dim):
@@ -614,6 +621,11 @@ class HOGNet:
         # Building Model
         model = Model(inputs=inputs, outputs=output)
 
+        # Setting weights
+        model.layers[1].set_weights(prewitt_x)
+        model.layers[2].set_weights(prewitt_y)
+        model.layers[9].set_weights(cent)
+
         self.model = model
 
     def fit(self, train_x, train_y, val_x=None, val_y=None):
@@ -647,11 +659,6 @@ class HOGNet:
         # Setting random number generator seeds.
         np.random.seed(self.seed)
         tf.set_random_seed(self.seed)
-
-        # Setting weights
-        self.model.layers[1].set_weights(self.prewitt_x)
-        self.model.layers[2].set_weights(self.prewitt_y)
-        self.model.layers[9].set_weights(self.cent)
         
         # Checking for validation data
         if val_x is None and val_y is None:
@@ -835,7 +842,7 @@ class HOGNet:
         
         return ba
         
-    def save(self, path=None):
+    def save(self, path=None, to_dir=False):
         """Serialize model weights to HDF5.
 
         # Arguments:
@@ -846,7 +853,13 @@ class HOGNet:
             self
         """
         if path is None:
-            path = self.name + '.h5'
+            path = self.name + "_" + strftime(
+                        "%m_%d_%H_%M_%S", gmtime()) + '.h5'
+
+        elif to_dir:
+            name = self.name + "_" + strftime(
+                    "%m_%d_%H_%M_%S", gmtime()) + '.h5'
+            path = Path(path) / Path(name)
 
         self.model.save_weights(path)
 
