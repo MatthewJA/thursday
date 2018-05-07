@@ -355,8 +355,6 @@ def join_fr_random(fr_data_path, random_path, output_path):
 
    else:
       raise ValueError( "Labels are of unknown format")
-   
-   
 
    images = np.concatenate((images, random), axis=0)
    labels = np.concatenate((labels, 
